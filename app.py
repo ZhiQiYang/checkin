@@ -414,7 +414,6 @@ def send_group_message():
 
 # LINE Webhook 處理 (合併了獲取群組ID的功能)
 @app.route('/webhook', methods=['POST'])
-@app.route('/webhook', methods=['POST'])
 def webhook():
     global recent_group_id  # 使用全局變量存儲最近的群組ID
     signature = request.headers.get('X-Line-Signature', '')
