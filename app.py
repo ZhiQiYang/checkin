@@ -45,7 +45,7 @@ def ensure_group_messages_file():
     ensure_file_exists(GROUP_MESSAGES_FILE, {"messages": []})
 
 # 儲存打卡記錄
-def save_checkin(user_id, name, timestamp, location):
+def save_checkin(user_id, name, timestamp, location, note=None, latitude=None, longitude=None):
     ensure_checkin_file()
     
     with open(CHECKIN_FILE, 'r') as f:
@@ -59,14 +59,22 @@ def save_checkin(user_id, name, timestamp, location):
         if record["user_id"] == user_id and record["date"] == today:
             return False, "今天已經打卡過了"
     
-    # 添加新記錄
+    # 添加新記錄，包含備註和經緯度
     new_record = {
         "user_id": user_id,
         "name": name,
         "date": today,
         "time": timestamp,
-        "location": location
+        "location": location,
+        "note": note
     }
+    
+    # 如果有經緯度資訊，添加到記錄中
+    if latitude and longitude:
+        new_record["coordinates"] = {
+            "latitude": float(latitude),
+            "longitude": float(longitude)
+        }
     
     data["records"].append(new_record)
     
@@ -85,6 +93,40 @@ def test_rich_menu():
         return jsonify({"success": True, "message": "Rich Menu 測試成功！"})
     else:
         return jsonify({"success": False, "message": "Rich Menu 測試失敗，請查看日誌"})
+
+@app.route('/api/checkin', methods=['POST'])
+def process_checkin():
+    data = request.json
+    user_id = data.get('userId')
+    display_name = data.get('displayName')
+    location = data.get('location', '未提供位置')
+    note = data.get('note')  # 獲取備註
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # 儲存打卡記錄
+    success, message = save_checkin(
+        user_id, display_name, timestamp, location, 
+        note=note, latitude=latitude, longitude=longitude
+    )
+    
+    if success:
+        # 發送 LINE 通知
+        notification_text = f"✅ {display_name} 已於 {timestamp} 完成打卡\n📍 位置: {location}"
+        if note:
+            notification_text += f"\n📝 備註: {note}"
+        
+        notification_sent = send_line_message_to_group(notification_text)
+        if not notification_sent:
+            message += "（通知發送失敗）"
+    
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+
 
 @app.route('/personal-history')
 def personal_history():
@@ -428,23 +470,27 @@ def webhook():
                             send_reply(reply_token, "無法獲取用戶資料，請使用 LIFF 頁面打卡")
                     
                     # 打卡報表
-                    elif command == '打卡報表':
-                        # 獲取今日打卡記錄
-                        ensure_checkin_file()
-                        with open(CHECKIN_FILE, 'r') as f:
-                            data = json.load(f)
-                        
-                        today = datetime.now().strftime("%Y-%m-%d")
-                        today_records = [r for r in data['records'] if r['date'] == today]
-                        
-                        if not today_records:
-                            send_reply(reply_token, "今日尚無打卡記錄")
-                        else:
-                            report = "📊 今日打卡報表:\n\n"
-                            for idx, record in enumerate(today_records, 1):
-                                report += f"{idx}. {record['name']} - {record['time']}\n"
-                            
-                            send_reply(reply_token, report)
+                    # 修改打卡報表
+elif command == '打卡報表':
+    # 獲取今日打卡記錄
+    ensure_checkin_file()
+    with open(CHECKIN_FILE, 'r') as f:
+        data = json.load(f)
+    
+    today = datetime.now().strftime("%Y-%m-%d")
+    today_records = [r for r in data['records'] if r['date'] == today]
+    
+    if not today_records:
+        send_reply(reply_token, "今日尚無打卡記錄")
+    else:
+        report = "📊 今日打卡報表:\n\n"
+        for idx, record in enumerate(today_records, 1):
+            report += f"{idx}. {record['name']} - {record['time']}\n   📍 {record['location']}"
+            if record.get('note'):
+                report += f"\n   📝 {record['note']}"
+            report += "\n\n"
+        
+        send_reply(reply_token, report)
                     
                     # 幫助
                     elif command == '幫助':
