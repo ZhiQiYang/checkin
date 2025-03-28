@@ -5,7 +5,6 @@ import os
 import threading
 import time
 import requests
-from datetime import datetime
 
 app = Flask(__name__)
 
