@@ -74,7 +74,17 @@ def save_checkin(user_id, name, timestamp, location):
         json.dump(data, f, ensure_ascii=False, indent=2)
     
     return True, "打卡成功"
+# 在 app.py 中添加
+from test_rich_menu import test_rich_menu_process, get_rich_menu_list, delete_rich_menu, create_rich_menu, upload_rich_menu_image, set_default_rich_menu
 
+# 修改現有的 init_rich_menu 路由
+@app.route('/test-rich-menu', methods=['GET'])
+def test_rich_menu():
+    success = test_rich_menu_process()
+    if success:
+        return jsonify({"success": True, "message": "Rich Menu 測試成功！"})
+    else:
+        return jsonify({"success": False, "message": "Rich Menu 測試失敗，請查看日誌"})
 # 保存群組消息
 def save_group_message(user_id, user_name, message, timestamp):
     ensure_group_messages_file()
