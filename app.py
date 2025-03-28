@@ -455,7 +455,7 @@ def webhook():
                             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             success, message = save_checkin(user_id, display_name, timestamp, "快速打卡")
                             
-                           if success:
+                        if success:
                                 send_checkin_notification(display_name, timestamp, "快速打卡", note="透過指令快速打卡")
                                 send_reply(reply_token, f"✅ {message}")
                             else:
