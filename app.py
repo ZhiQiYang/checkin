@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, render_template
 import json
 import os
+import threading
+import time
 import requests
 from datetime import datetime
 from config import *
@@ -141,6 +143,40 @@ def send_reply(reply_token, text):
 def index():
     return "打卡系統運行中!"
 
+# 健康檢查/ping 路由
+@app.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({"status": "alive", "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}), 200
+
+
+
+# Render 服務的 URL (從環境變數獲取或使用預設值)
+APP_URL = os.environ.get('APP_URL', 'https://你的應用名稱.onrender.com')
+
+# 設置 ping 的間隔時間 (秒)
+PING_INTERVAL = 840  # 14分鐘，略低於 Render 的 15 分鐘休眠時間
+
+def keep_alive():
+    """定期發送請求到自己的服務來保持活躍"""
+    while True:
+        try:
+            response = requests.get(f"{APP_URL}/ping")
+            print(f"Keep-alive ping sent. Status: {response.status_code}")
+        except Exception as e:
+            print(f"Keep-alive ping failed: {e}")
+        
+        # 睡眠到下一次 ping
+        time.sleep(PING_INTERVAL)
+
+# 啟動保活線程
+def start_keep_alive_thread():
+    keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
+    keep_alive_thread.start()
+    print("Keep-alive thread started")
 if __name__ == '__main__':
+    # 啟動保活線程
+    start_keep_alive_thread()
+    
+    # 啟動 Flask 應用
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)  # 在生產環境中禁用 debug 模式
