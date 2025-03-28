@@ -57,33 +57,34 @@
             padding: 30px;
             color: #777;
         }
-        .map-container {
-            height: 200px;
-            margin-top: 10px;
-            border-radius: 5px;
-            overflow: hidden;
+        .map-link a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .map-link a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1 class="text-center mb-4">個人打卡歷史紀錄</h1>
-        
+
         <div class="filter-section">
             <form id="filterForm">
                 <div class="form-group">
                     <label for="dateRange">選擇時間範圍：</label>
                     <select id="dateRange" name="dateRange" class="form-control">
-                        <option value="7" {% if days == 7 %}selected{% endif %}>最近一週</option>
-                        <option value="30" {% if days == 30 %}selected{% endif %}>最近一個月</option>
-                        <option value="90" {% if days == 90 %}selected{% endif %}>最近三個月</option>
-                        <option value="all" {% if days == 'all' %}selected{% endif %}>所有紀錄</option>
+                        <option value="7" {% if days == "7" %}selected{% endif %}>最近一週</option>
+                        <option value="30" {% if days == "30" %}selected{% endif %}>最近一個月</option>
+                        <option value="90" {% if days == "90" %}selected{% endif %}>最近三個月</option>
+                        <option value="all" {% if days == "all" %}selected{% endif %}>所有紀錄</option>
                     </select>
                     <button type="submit" class="btn btn-primary mt-2">套用</button>
                 </div>
             </form>
         </div>
-        
+
         {% if records %}
             <div class="records-list">
                 {% for record in records %}
@@ -91,13 +92,17 @@
                     <div class="record-date">{{ record.date }}</div>
                     <div class="record-time">{{ record.time }}</div>
                     <div class="record-location">📍 位置: {{ record.location }}</div>
-                    
+
                     {% if record.note %}
                     <div class="record-note">📝 備註: {{ record.note }}</div>
                     {% endif %}
-                    
+
                     {% if record.coordinates and record.coordinates.latitude and record.coordinates.longitude %}
-                    <div id="map-{{ loop.index }}" class="map-container"></div>
+                    <div class="map-link">
+                        🗺️ <a href="https://www.google.com/maps?q={{ record.coordinates.latitude }},{{ record.coordinates.longitude }}" target="_blank">
+                            查看地圖位置
+                        </a>
+                    </div>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -107,41 +112,12 @@
                 <p>目前沒有打卡紀錄</p>
             </div>
         {% endif %}
-        
+
         <div class="text-center mt-4">
             <a href="javascript:history.back()" class="btn btn-secondary">返回</a>
         </div>
     </div>
 
-    <!-- 載入 Google Maps API (如果有地圖功能的話) -->
-    {% if has_map_records %}
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}"></script>
-    <script>
-        function initMaps() {
-            {% for record in records %}
-                {% if record.coordinates and record.coordinates.latitude and record.coordinates.longitude %}
-                    var mapDiv = document.getElementById('map-{{ loop.index }}');
-                    var position = {
-                        lat: {{ record.coordinates.latitude }},
-                        lng: {{ record.coordinates.longitude }}
-                    };
-                    var map = new google.maps.Map(mapDiv, {
-                        zoom: 15,
-                        center: position
-                    });
-                    var marker = new google.maps.Marker({
-                        position: position,
-                        map: map,
-                        title: '{{ record.date }} {{ record.time }}'
-                    });
-                {% endif %}
-            {% endfor %}
-        }
-        
-        window.onload = initMaps;
-    </script>
-    {% endif %}
-    
     <script>
         document.getElementById('dateRange').addEventListener('change', function() {
             document.getElementById('filterForm').submit();
