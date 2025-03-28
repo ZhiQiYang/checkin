@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, render_template, redirect
+from datetime import datetime, timedelta  # 確保導入 timedelta
 import json
 import os
 import threading
