@@ -9,7 +9,6 @@ import requests
 app = Flask(__name__)
 
 # 從環境變量獲取 LINE API 設置
-# 從環境變量獲取 LINE API 設置
 LINE_LOGIN_CHANNEL_ID = os.environ.get('LINE_LOGIN_CHANNEL_ID')
 LINE_LOGIN_CHANNEL_SECRET = os.environ.get('LINE_LOGIN_CHANNEL_SECRET')
 LINE_GROUP_ID = os.environ.get('LINE_GROUP_ID')  # 刪除第17行的重複定義
@@ -172,14 +171,14 @@ def personal_history():
         for record in user_records
     )
     
-    # 渲染模板
-    return render_template(
-        'personal_history.html', 
-        records=user_records, 
-        days=days_filter,
-        has_map_records=has_map_records,
-        google_maps_api_key="YOUR_API_KEY"  # 請替換為您的 Google Maps API Key
-    )
+   # 渲染模板
+return render_template(
+    'personal_history.html', 
+    records=user_records, 
+    days=days_filter,
+    has_map_records=has_map_records,
+    google_maps_api_key=GOOGLE_MAPS_API_KEY  # 使用環境變數
+)
     
 # 保存群組消息
 def save_group_message(user_id, user_name, message, timestamp):
@@ -289,7 +288,7 @@ def start_keep_alive_thread():
 # 打卡頁面
 @app.route('/checkin')
 def checkin_page():
-    return render_template('checkin.html', liff_id=LIFF_ID)
+    return render_template('checkin.html', liff_id=LIFF_ID, google_maps_api_key=GOOGLE_MAPS_API_KEY)
 
 # 群組互動頁面
 @app.route('/group')
@@ -456,11 +455,11 @@ def webhook():
                             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             success, message = save_checkin(user_id, display_name, timestamp, "快速打卡")
                             
-                            if success:
-                                send_checkin_notification(display_name, timestamp, "快速打卡")
-                                send_reply(reply_token, f"✅ {message}")
-                            else:
-                                send_reply(reply_token, f"❌ {message}")
+                           if success:
+    send_checkin_notification(display_name, timestamp, "快速打卡", note="透過指令快速打卡")
+    send_reply(reply_token, f"✅ {message}")
+else:
+    send_reply(reply_token, f"❌ {message}")
                         else:
                             send_reply(reply_token, "無法獲取用戶資料，請使用 LIFF 頁面打卡")
                     
