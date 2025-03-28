@@ -293,6 +293,72 @@ def webhook():
                 reply_token = event['replyToken']
                 source_type = event.get('source', {}).get('type')
                 
+                # 處理 Rich Menu 消息
+                if text.startswith('!'):
+                    command = text[1:].lower()
+                    
+                    # 快速打卡
+                    if command == '快速打卡':
+                        user_id = event['source'].get('userId')
+                        if not user_id:
+                            send_reply(reply_token, "無法獲取用戶信息，請使用 LIFF 頁面打卡")
+                            continue
+                            
+                        # 獲取用戶資料
+                        profile_response = requests.get(
+                            f'https://api.line.me/v2/bot/profile/{user_id}',
+                            headers={
+                                'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'
+                            }
+                        )
+                        
+                        if profile_response.status_code == 200:
+                            profile = profile_response.json()
+                            display_name = profile.get('displayName', '未知用戶')
+                            
+                            # 進行打卡
+                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            success, message = save_checkin(user_id, display_name, timestamp, "快速打卡")
+                            
+                            if success:
+                                send_checkin_notification(display_name, timestamp, "快速打卡")
+                                send_reply(reply_token, f"✅ {message}")
+                            else:
+                                send_reply(reply_token, f"❌ {message}")
+                        else:
+                            send_reply(reply_token, "無法獲取用戶資料，請使用 LIFF 頁面打卡")
+                    
+                    # 打卡報表
+                    elif command == '打卡報表':
+                        # 獲取今日打卡記錄
+                        ensure_checkin_file()
+                        with open(CHECKIN_FILE, 'r') as f:
+                            data = json.load(f)
+                        
+                        today = datetime.now().strftime("%Y-%m-%d")
+                        today_records = [r for r in data['records'] if r['date'] == today]
+                        
+                        if not today_records:
+                            send_reply(reply_token, "今日尚無打卡記錄")
+                        else:
+                            report = "📊 今日打卡報表:\n\n"
+                            for idx, record in enumerate(today_records, 1):
+                                report += f"{idx}. {record['name']} - {record['time']}\n"
+                            
+                            send_reply(reply_token, report)
+                    
+                    # 幫助
+                    elif command == '幫助':
+                        help_message = (
+                            "📱 打卡系統使用說明:\n\n"
+                            "1. 點擊選單中的「打卡」按鈕進行定位打卡\n"
+                            "2. 點擊「群組互動」進入群組聊天室\n"
+                            "3. 發送「!快速打卡」可直接打卡\n"
+                            "4. 發送「!打卡報表」查看今日打卡情況\n"
+                            "5. 發送「!幫助」查看此幫助訊息"
+                        )
+                        send_reply(reply_token, help_message)
+                
                 # 處理來自用戶的私聊消息
                 if source_type == 'user':
                     if text == '打卡' or text == '打卡連結':
@@ -327,32 +393,218 @@ def webhook():
                                 # 保存群組消息
                                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 save_group_message(user_id, user_name, text, timestamp)
-                            
-                        # 處理特定群組指令
-                        if text.startswith('!'):
-                            command = text[1:].lower()
-                            
-                            if command == 'help':
-                                help_message = (
-                                    "📢 群組互動機器人指令:\n"
-                                    "!help - 顯示此幫助信息\n"
-                                    "!打卡 - 獲取打卡連結\n"
-                                    "!互動 - 獲取群組互動頁面連結"
-                                )
-                                send_reply(reply_token, help_message)
-                            
-                            elif command == '打卡':
-                                liff_url = f'https://liff.line.me/{LIFF_ID}'
-                                send_reply(reply_token, f"請點擊以下連結進行打卡：\n{liff_url}")
-                            
-                            elif command == '互動':
-                                group_url = f'https://liff.line.me/{GROUP_LIFF_ID}'
-                                send_reply(reply_token, f"請點擊以下連結進入群組互動頁面：\n{group_url}")
     
     except Exception as e:
         print(f"Webhook處理錯誤: {e}")
     
     return 'OK'
+
+# 建立 Rich Menu
+def create_rich_menu():
+    try:
+        # 定義 Rich Menu 結構
+        rich_menu_data = {
+            "size": {
+                "width": 2500,
+                "height": 1686
+            },
+            "selected": True,
+            "name": "打卡系統選單",
+            "chatBarText": "打開選單",
+            "areas": [
+                {
+                    "bounds": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 1250,
+                        "height": 843
+                    },
+                    "action": {
+                        "type": "uri",
+                        "uri": f"https://liff.line.me/{LIFF_ID}"
+                    }
+                },
+                {
+                    "bounds": {
+                        "x": 1250,
+                        "y": 0,
+                        "width": 1250,
+                        "height": 843
+                    },
+                    "action": {
+                        "type": "uri",
+                        "uri": f"https://liff.line.me/{GROUP_LIFF_ID}"
+                    }
+                },
+                {
+                    "bounds": {
+                        "x": 0,
+                        "y": 843,
+                        "width": 833,
+                        "height": 843
+                    },
+                    "action": {
+                        "type": "message",
+                        "text": "!打卡報表"
+                    }
+                },
+                {
+                    "bounds": {
+                        "x": 833,
+                        "y": 843,
+                        "width": 833,
+                        "height": 843
+                    },
+                    "action": {
+                        "type": "message",
+                        "text": "!幫助"
+                    }
+                },
+                {
+                    "bounds": {
+                        "x": 1666,
+                        "y": 843,
+                        "width": 834,
+                        "height": 843
+                    },
+                    "action": {
+                        "type": "message",
+                        "text": "!快速打卡"
+                    }
+                }
+            ]
+        }
+        
+        # 發送請求創建 Rich Menu
+        response = requests.post(
+            'https://api.line.me/v2/bot/richmenu',
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'
+            },
+            json=rich_menu_data
+        )
+        
+        if response.status_code == 200:
+            rich_menu_id = response.json()["richMenuId"]
+            print(f"成功創建 Rich Menu: {rich_menu_id}")
+            return rich_menu_id
+        else:
+            print(f"創建 Rich Menu 失敗: {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"創建 Rich Menu 發生錯誤: {e}")
+        return None
+
+# 上傳 Rich Menu 圖片
+def upload_rich_menu_image(rich_menu_id, image_path):
+    try:
+        with open(image_path, 'rb') as f:
+            image_data = f.read()
+        
+        response = requests.post(
+            f'https://api-data.line.me/v2/bot/richmenu/{rich_menu_id}/content',
+            headers={
+                'Content-Type': 'image/jpeg',  # 或 'image/png'
+                'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'
+            },
+            data=image_data
+        )
+        
+        if response.status_code == 200:
+            print("成功上傳 Rich Menu 圖片")
+            return True
+        else:
+            print(f"上傳 Rich Menu 圖片失敗: {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"上傳 Rich Menu 圖片發生錯誤: {e}")
+        return False
+
+# 設置為默認 Rich Menu
+def set_default_rich_menu(rich_menu_id):
+    try:
+        response = requests.post(
+            f'https://api.line.me/v2/bot/user/all/richmenu/{rich_menu_id}',
+            headers={
+                'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'
+            }
+        )
+        
+        if response.status_code == 200:
+            print("成功設置默認 Rich Menu")
+            return True
+        else:
+            print(f"設置默認 Rich Menu 失敗: {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"設置默認 Rich Menu 發生錯誤: {e}")
+        return False
+
+# 初始化 Rich Menu 的路由
+@app.route('/init-rich-menu', methods=['GET'])
+def init_rich_menu():
+    try:
+        # 獲取 Rich Menu 列表
+        response = requests.get(
+            'https://api.line.me/v2/bot/richmenu/list',
+            headers={
+                'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'
+            }
+        )
+        
+        # 刪除現有的 Rich Menu
+        if response.status_code == 200:
+            rich_menus = response.json().get("richmenus", [])
+            for menu in rich_menus:
+                requests.delete(
+                    f'https://api.line.me/v2/bot/richmenu/{menu["richMenuId"]}',
+                    headers={
+                        'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'
+                    }
+                )
+        
+        # 創建新的 Rich Menu
+        rich_menu_id = create_rich_menu()
+        
+        if rich_menu_id:
+            # 上傳圖片
+            image_uploaded = upload_rich_menu_image(rich_menu_id, 'static/rich_menu.jpg')
+            
+            if image_uploaded:
+                # 設置為默認選單
+                if set_default_rich_menu(rich_menu_id):
+                    return jsonify({"success": True, "message": "成功創建並設置 Rich Menu"})
+        
+        return jsonify({"success": False, "message": "設置 Rich Menu 失敗"})
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": f"錯誤: {str(e)}"})
+
+# 自動初始化 Rich Menu (如果需要)
+def auto_init_rich_menu():
+    try:
+        # 獲取 Rich Menu 列表
+        response = requests.get(
+            'https://api.line.me/v2/bot/richmenu/list',
+            headers={
+                'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'
+            }
+        )
+        
+        # 檢查是否需要創建 Rich Menu
+        if response.status_code == 200:
+            rich_menus = response.json().get("richmenus", [])
+            if not rich_menus:  # 如果沒有現有的 Rich Menu
+                rich_menu_id = create_rich_menu()
+                if rich_menu_id:
+                    upload_rich_menu_image(rich_menu_id, 'static/rich_menu.jpg')
+                    set_default_rich_menu(rich_menu_id)
+    except Exception as e:
+        print(f"自動初始化 Rich Menu 錯誤: {e}")
 
 # 健康檢查
 @app.route('/')
@@ -365,6 +617,10 @@ def ping():
     return jsonify({"status": "alive", "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}), 200
 
 if __name__ == '__main__':
+    # 初始化 Rich Menu
+    if os.path.exists('static/rich_menu.jpg'):
+        auto_init_rich_menu()
+    
     # 啟動保活線程
     start_keep_alive_thread()
     
