@@ -623,7 +623,7 @@ def init_rich_menu():
         
         if rich_menu_id:
             # 上傳圖片
-            image_uploaded = upload_rich_menu_image(rich_menu_id, 'static/rich_menu.png')
+            image_uploaded = upload_rich_menu_image(rich_menu_id, 'static/rich_menu.jpg')
             
             if image_uploaded:
                 # 設置為默認選單
@@ -652,7 +652,7 @@ def auto_init_rich_menu():
             if not rich_menus:  # 如果沒有現有的 Rich Menu
                 rich_menu_id = create_rich_menu()
                 if rich_menu_id:
-                    upload_rich_menu_image(rich_menu_id, 'static/rich_menu.png')
+                    upload_rich_menu_image(rich_menu_id, 'static/rich_menu.jpg')
                     set_default_rich_menu(rich_menu_id)
     except Exception as e:
         print(f"自動初始化 Rich Menu 錯誤: {e}")
@@ -669,7 +669,7 @@ def ping():
 
 if __name__ == '__main__':
     # 初始化 Rich Menu
-    if os.path.exists('static/rich_menu.png'):
+    if os.path.exists('static/rich_menu.jpg'):
         auto_init_rich_menu()
     
     # 啟動保活線程
