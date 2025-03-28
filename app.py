@@ -85,6 +85,54 @@ def test_rich_menu():
         return jsonify({"success": True, "message": "Rich Menu 測試成功！"})
     else:
         return jsonify({"success": False, "message": "Rich Menu 測試失敗，請查看日誌"})
+
+@app.route('/personal-history')
+def personal_history():
+    # 從 LIFF 應用程式獲取用戶ID (實際使用時應從 LINE 登入獲取)
+    user_id = request.args.get('userId')
+    if not user_id:
+        return "請從 LINE 應用程式訪問此頁面", 400
+    
+    # 獲取時間範圍參數
+    days_filter = request.args.get('dateRange', '7')
+    
+    # 讀取打卡記錄
+    ensure_checkin_file()
+    with open(CHECKIN_FILE, 'r') as f:
+        data = json.load(f)
+    
+    # 篩選指定用戶的記錄
+    user_records = [r for r in data['records'] if r['user_id'] == user_id]
+    
+    # 根據時間範圍過濾
+    if days_filter != 'all':
+        try:
+            days = int(days_filter)
+            cutoff_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            user_records = [r for r in user_records if r['date'] >= cutoff_date]
+        except ValueError:
+            pass  # 如果轉換失敗，不進行過濾
+    
+    # 依日期排序 (最新的在前)
+    user_records.sort(key=lambda x: (x['date'], x['time']), reverse=True)
+    
+    # 檢查是否有包含地圖資訊的記錄
+    has_map_records = any(
+        'coordinates' in record and 
+        record.get('coordinates', {}).get('latitude') and 
+        record.get('coordinates', {}).get('longitude')
+        for record in user_records
+    )
+    
+    # 渲染模板
+    return render_template(
+        'personal_history.html', 
+        records=user_records, 
+        days=days_filter,
+        has_map_records=has_map_records,
+        google_maps_api_key="YOUR_API_KEY"  # 請替換為您的 Google Maps API Key
+    )
+    
 # 保存群組消息
 def save_group_message(user_id, user_name, message, timestamp):
     ensure_group_messages_file()
