@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>員工打卡系統</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+    <div class="card">
+        <h1>員工打卡系統</h1>
+        <div id="profile" class="profile">
+            <p>正在載入資料...</p>
+        </div>
+        
+        <p id="time">當前時間: ...</p>
+        <button id="checkin-btn" disabled>正在初始化...</button>
+        <p id="status"></p>
+    </div>
+    
+    <script>
+        // LIFF ID 從後端傳入
+        const liffId = "{{ liff_id }}";
+        
+        // 更新時間
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('time').textContent = `當前時間: ${now.toLocaleString()}`;
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            // 初始化 LIFF
+            liff.init({ liffId: liffId })
+                .then(() => {
+                    if (!liff.isLoggedIn()) {
+                        liff.login();
+                    } else {
+                        initializeApp();
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('status').textContent = 'LIFF初始化失敗: ' + err.message;
+                    document.getElementById('status').className = 'error';
+                });
+        });
+        
+        function initializeApp() {
+            // 獲取用戶資料
+            liff.getProfile()
+                .then(profile => {
+                    document.getElementById('profile').innerHTML = `
+                        <img src="${profile.pictureUrl}" alt="Profile">
+                        <div>
+                            <h3>${profile.displayName}</h3>
+                            <p>點擊下方按鈕完成今日打卡</p>
+                        </div>
+                    `;
+                    
+                    const checkinBtn = document.getElementById('checkin-btn');
+                    checkinBtn.textContent = '打卡';
+                    checkinBtn.disabled = false;
+                    
+                    checkinBtn.addEventListener('click', function() {
+                        this.disabled = true;
+                        this.textContent = '處理中...';
+                        
+                        // 嘗試獲取位置
+                        if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                                position => {
+                                    const location = `${position.coords.latitude}, ${position.coords.longitude}`;
+                                    performCheckin(profile, location);
+                                },
+                                error => {
+                                    console.warn("無法獲取位置:", error);
+                                    performCheckin(profile, "未能獲取位置");
+                                }
+                            );
+                        } else {
+                            performCheckin(profile, "裝置不支援位置服務");
+                        }
+                    });
+                })
+                .catch(err => {
+                    document.getElementById('status').textContent = '獲取用戶資料失敗: ' + err.message;
+                    document.getElementById('status').className = 'error';
+                });
+        }
+        
+        function performCheckin(profile, location) {
+            fetch('/api/checkin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    userId: profile.userId,
+                    displayName: profile.displayName,
+                    location: location
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                const statusEl = document.getElementById('status');
+                const buttonEl = document.getElementById('checkin-btn');
+                
+                if (result.success) {
+                    statusEl.textContent = '✅ ' + result.message;
+                    statusEl.className = 'success';
+                    buttonEl.textContent = '今日已打卡';
+                    
+                    // 自動關閉LIFF視窗
+                    setTimeout(() => {
+                        liff.closeWindow();
+                    }, 3000);
+                } else {
+                    statusEl.textContent = '❌ ' + result.message;
+                    statusEl.className = 'error';
+                    buttonEl.textContent = '重試';
+                    buttonEl.disabled = false;
+                }
+            })
+            .catch(error => {
+                document.getElementById('status').textContent = '網路錯誤: ' + error.message;
+                document.getElementById('status').className = 'error';
+                document.getElementById('checkin-btn').textContent = '重試';
+                document.getElementById('checkin-btn').disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
