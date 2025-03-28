@@ -1,345 +1,91 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 打卡系統</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            padding: 20px;
-            background-color: #f7f7f7;
-            font-family: Arial, sans-serif;
-        }
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .btn-primary {
-            background-color: #00c300;
-            border-color: #00c300;
-        }
-        .btn-secondary {
-            background-color: #6c757d;
-            border-color: #6c757d;
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #333;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        #status {
-            text-align: center;
-            padding: 10px;
-            margin-top: 20px;
-            border-radius: 5px;
-        }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        #locationMap {
-            width: 100%;
-            height: 300px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 20px 0;
-        }
-        .loading-spinner {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #00c300;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>打卡頁面</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
+    input, textarea { width: 100%; margin-bottom: 10px; padding: 5px; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>LINE 打卡系統</h1>
-        
-        <div id="loading" class="loading" style="display: none;">
-            <div class="loading-spinner"></div>
-        </div>
-        
-        <div id="checkinForm">
-            <div class="form-group">
-                <button id="locationBtn" class="btn btn-primary btn-block">獲取目前位置</button>
-            </div>
-            
-            <!-- 地圖顯示區域 -->
-            <div id="locationMap" style="display: none;"></div>
-            
-            <div class="form-group">
-                <label for="locationText">位置描述：</label>
-                <input type="text" id="locationText" class="form-control" placeholder="正在獲取位置..." readonly>
-                <!-- 隱藏的經緯度欄位 -->
-                <input type="hidden" id="latitude">
-                <input type="hidden" id="longitude">
-            </div>
-            
-            <!-- 新增備註欄位 -->
-            <div class="form-group">
-                <label for="noteInput">備註 (選填)：</label>
-                <textarea id="noteInput" class="form-control" placeholder="輸入備註，例如：在家工作、出差等"></textarea>
-            </div>
-            
-            <div class="form-group">
-                <button id="checkinBtn" class="btn btn-primary btn-block" disabled>打卡</button>
-            </div>
-            
-            <!-- 查看歷史紀錄按鈕 -->
-            <button type="button" id="viewHistoryBtn" class="btn btn-secondary btn-block">查看我的打卡歷史</button>
-        </div>
-        
-        <div id="status" style="display: none;"></div>
-    </div>
+  <h1>📍 打卡頁面</h1>
 
-    <!-- LINE LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <!-- Google Maps JavaScript API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places"></script>
-    
-    <script>
-        // 全局變數
-        let map;
-        let marker;
-        
-        // 初始化 LIFF
-        window.onload = function() {
-            initializeLiff();
-        };
-        
-        function initializeLiff() {
-            liff.init({
-                liffId: "{{ liff_id }}"
-            }).then(() => {
-                // 檢查是否登入
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                }
-                
-                // 初始化位置按鈕
-                document.getElementById('locationBtn').addEventListener('click', getLocation);
-                document.getElementById('checkinBtn').addEventListener('click', submitCheckin);
-                document.getElementById('viewHistoryBtn').addEventListener('click', viewHistory);
-            }).catch((err) => {
-                showStatus('LIFF 初始化失敗: ' + err.message, 'error');
-            });
-        }
-        
-        // 獲取地理位置
-        function getLocation() {
-            showLoading(true);
-            
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const latitude = position.coords.latitude;
-                    const longitude = position.coords.longitude;
-                    
-                    // 儲存經緯度
-                    document.getElementById('latitude').value = latitude;
-                    document.getElementById('longitude').value = longitude;
-                    
-                    // 顯示地圖
-                    showMap(latitude, longitude);
-                    
-                    // 獲取位置描述
-                    getAddressFromCoordinates(latitude, longitude);
-                    
-                    // 啟用打卡按鈕
-                    document.getElementById('checkinBtn').disabled = false;
-                    
-                    showLoading(false);
-                }, function(error) {
-                    showLoading(false);
-                    let errorMessage;
-                    
-                    switch(error.code) {
-                        case error.PERMISSION_DENIED:
-                            errorMessage = "使用者拒絕位置請求。";
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            errorMessage = "位置資訊不可用。";
-                            break;
-                        case error.TIMEOUT:
-                            errorMessage = "獲取位置超時。";
-                            break;
-                        case error.UNKNOWN_ERROR:
-                            errorMessage = "發生未知錯誤。";
-                            break;
-                    }
-                    
-                    showStatus(errorMessage, 'error');
-                }, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                });
-            } else {
-                showLoading(false);
-                showStatus("您的瀏覽器不支援地理位置功能。", "error");
-            }
-        }
-        
-        // 顯示地圖
-        function showMap(latitude, longitude) {
-            const mapDiv = document.getElementById('locationMap');
-            mapDiv.style.display = 'block';
-            
-            const position = { lat: latitude, lng: longitude };
-            
-            // 創建地圖
-            map = new google.maps.Map(mapDiv, {
-                zoom: 16,
-                center: position
-            });
-            
-            // 添加標記
-            marker = new google.maps.Marker({
-                position: position,
-                map: map,
-                title: '您的位置'
-            });
-        }
-        
-        // 使用反向地理編碼獲取地址
-        function getAddressFromCoordinates(latitude, longitude) {
-            const geocoder = new google.maps.Geocoder();
-            const latlng = { lat: latitude, lng: longitude };
-            
-            geocoder.geocode({ 'location': latlng }, function(results, status) {
-                if (status === 'OK') {
-                    if (results[0]) {
-                        const address = results[0].formatted_address;
-                        document.getElementById('locationText').value = address;
-                    } else {
-                        document.getElementById('locationText').value = '無法獲取地址';
-                    }
-                } else {
-                    console.error('Geocoder failed due to: ' + status);
-                    document.getElementById('locationText').value = `位置: ${latitude}, ${longitude}`;
-                }
-            });
-        }
-        
-        // 提交打卡
-        function submitCheckin() {
-            showLoading(true);
-            
-            if (liff.isLoggedIn()) {
-                liff.getProfile().then(profile => {
-                    const userId = profile.userId;
-                    const displayName = profile.displayName;
-                    const location = document.getElementById('locationText').value;
-                    const note = document.getElementById('noteInput').value; // 獲取備註
-                    const latitude = document.getElementById('latitude').value;
-                    const longitude = document.getElementById('longitude').value;
-                    
-                    // 發送打卡請求
-                    fetch('/api/checkin', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            userId: userId,
-                            displayName: displayName,
-                            location: location,
-                            note: note,
-                            latitude: latitude,
-                            longitude: longitude
-                        }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        showLoading(false);
-                        
-                        if (data.success) {
-                            showStatus('打卡成功！', 'success');
-                            
-                            // 清空表單和地圖
-                            document.getElementById('locationText').value = '';
-                            document.getElementById('noteInput').value = '';
-                            document.getElementById('locationMap').style.display = 'none';
-                            document.getElementById('checkinBtn').disabled = true;
-                            
-                            // 可選：關閉 LIFF 頁面
-                            // setTimeout(() => liff.closeWindow(), 2000);
-                        } else {
-                            showStatus('打卡失敗: ' + data.message, 'error');
-                        }
-                    })
-                    .catch(error => {
-                        showLoading(false);
-                        console.error('Error:', error);
-                        showStatus('發生錯誤，請稍後再試', 'error');
-                    });
-                }).catch(err => {
-                    showLoading(false);
-                    showStatus('獲取用戶資料失敗: ' + err.message, 'error');
-                });
-            } else {
-                showLoading(false);
-                showStatus('請先登入 LINE', 'error');
-                liff.login();
-            }
-        }
-        
-        // 查看歷史紀錄
-        function viewHistory() {
-            if (liff.isLoggedIn()) {
-                liff.getProfile().then(profile => {
-                    const userId = profile.userId;
-                    window.open(`/personal-history?userId=${userId}`, '_blank');
-                }).catch(err => {
-                    showStatus('獲取用戶資料失敗: ' + err.message, 'error');
-                });
-            } else {
-                showStatus('請先登入 LINE', 'error');
-                liff.login();
-            }
-        }
-        
-        // 顯示狀態訊息
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('status');
-            statusDiv.textContent = message;
-            statusDiv.className = type;
-            statusDiv.style.display = 'block';
-            
-            // 自動隱藏
-            setTimeout(() => {
-                statusDiv.style.display = 'none';
-            }, 3000);
-        }
-        
-        // 顯示/隱藏載入動畫
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'flex' : 'none';
-        }
-    </script>
+  <form id="checkinForm">
+    <input type="hidden" id="userId" value="">
+    <input type="hidden" id="displayName" value="">
+
+    <label>位置名稱：</label>
+    <input type="text" id="location" placeholder="例如：台中辦公室">
+
+    <label>備註（選填）：</label>
+    <textarea id="note" rows="3"></textarea>
+
+    <label>緯度：</label>
+    <input type="text" id="latitude" readonly>
+
+    <label>經度：</label>
+    <input type="text" id="longitude" readonly>
+
+    <button type="button" onclick="getLocation()">📍 自動定位</button>
+    <button type="button" onclick="submitCheckin()">✅ 打卡</button>
+  </form>
+
+  <div id="status"></div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    async function initializeLiff() {
+      await liff.init({ liffId: "{{ liff_id }}" });
+      if (!liff.isLoggedIn()) liff.login();
+      const profile = await liff.getProfile();
+      document.getElementById("userId").value = profile.userId;
+      document.getElementById("displayName").value = profile.displayName;
+    }
+
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            document.getElementById("latitude").value = pos.coords.latitude;
+            document.getElementById("longitude").value = pos.coords.longitude;
+            document.getElementById("status").innerText = "✅ 已取得定位資訊";
+          },
+          err => {
+            document.getElementById("status").innerText = "❌ 取得定位失敗";
+          }
+        );
+      } else {
+        document.getElementById("status").innerText = "❌ 瀏覽器不支援定位功能";
+      }
+    }
+
+    function submitCheckin() {
+      const payload = {
+        userId: document.getElementById("userId").value,
+        displayName: document.getElementById("displayName").value,
+        location: document.getElementById("location").value,
+        note: document.getElementById("note").value,
+        latitude: document.getElementById("latitude").value,
+        longitude: document.getElementById("longitude").value,
+      };
+
+      fetch("/api/checkin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("status").innerText = data.message;
+      })
+      .catch(() => {
+        document.getElementById("status").innerText = "❌ 無法送出打卡，請稍後再試";
+      });
+    }
+
+    initializeLiff();
+  </script>
 </body>
 </html>
