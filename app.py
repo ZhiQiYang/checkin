@@ -27,6 +27,9 @@ CHECKIN_FILE = 'checkin_records.json'
 # 儲存群組消息的檔案
 GROUP_MESSAGES_FILE = 'group_messages.json'
 
+# 存儲最近的群組ID
+recent_group_id = None
+
 # 確保檔案存在
 def ensure_file_exists(filename, default_content):
     if not os.path.exists(filename):
@@ -176,6 +179,35 @@ def checkin_page():
 def group_page():
     return render_template('group.html', liff_id=GROUP_LIFF_ID)
 
+# 臨時路由用於獲取群組ID
+@app.route('/get-group-id', methods=['GET'])
+def get_group_id():
+    return """
+    <html>
+    <body>
+        <h1>群組ID獲取工具</h1>
+        <p>請發送一條消息到包含機器人的群組，然後查看此頁面的結果。</p>
+        <p>最近的群組ID: <strong id="groupId">等待消息...</strong></p>
+        <script>
+            setInterval(function() {
+                fetch('/api/recent-group-id')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.groupId) {
+                            document.getElementById('groupId').textContent = data.groupId;
+                        }
+                    });
+            }, 5000);
+        </script>
+    </body>
+    </html>
+    """
+
+# 提供最近的群組ID
+@app.route('/api/recent-group-id', methods=['GET'])
+def api_recent_group_id():
+    return jsonify({"groupId": recent_group_id})
+
 # LINE Login 回調
 @app.route('/auth/callback')
 def line_callback():
@@ -279,15 +311,24 @@ def send_group_message():
             'message': '發送失敗'
         })
 
-# LINE Webhook 處理
+# LINE Webhook 處理 (合併了獲取群組ID的功能)
 @app.route('/webhook', methods=['POST'])
 def webhook():
+    global recent_group_id  # 使用全局變量存儲最近的群組ID
     signature = request.headers.get('X-Line-Signature', '')
     body = request.get_data(as_text=True)
+    
+    print(f"收到 webhook 請求: {body[:100]}...")  # 只打印前100個字符避免日誌過長
     
     try:
         events = request.json.get('events', [])
         for event in events:
+            # 獲取群組ID (用於 get-group-id 工具)
+            if event.get('source', {}).get('type') == 'group':
+                recent_group_id = event['source']['groupId']
+                print(f"Found group ID: {recent_group_id}")
+            
+            # 正常的消息處理邏輯
             if event['type'] == 'message' and event['message']['type'] == 'text':
                 text = event['message']['text']
                 reply_token = event['replyToken']
