@@ -414,6 +414,7 @@ def send_group_message():
 
 # LINE Webhook 處理 (合併了獲取群組ID的功能)
 @app.route('/webhook', methods=['POST'])
+@app.route('/webhook', methods=['POST'])
 def webhook():
     global recent_group_id  # 使用全局變量存儲最近的群組ID
     signature = request.headers.get('X-Line-Signature', '')
@@ -471,27 +472,51 @@ def webhook():
                             send_reply(reply_token, "無法獲取用戶資料，請使用 LIFF 頁面打卡")
                     
                     # 打卡報表
-                    # 修改打卡報表
-elif command == '打卡報表':
-    # 獲取今日打卡記錄
-    ensure_checkin_file()
-    with open(CHECKIN_FILE, 'r') as f:
-        data = json.load(f)
-    
-    today = datetime.now().strftime("%Y-%m-%d")
-    today_records = [r for r in data['records'] if r['date'] == today]
-    
-    if not today_records:
-        send_reply(reply_token, "今日尚無打卡記錄")
-    else:
-        report = "📊 今日打卡報表:\n\n"
-        for idx, record in enumerate(today_records, 1):
-            report += f"{idx}. {record['name']} - {record['time']}\n   📍 {record['location']}"
-            if record.get('note'):
-                report += f"\n   📝 {record['note']}"
-            report += "\n\n"
-        
-        send_reply(reply_token, report)
+                    elif command == '打卡報表':
+                        # 獲取今日打卡記錄
+                        ensure_checkin_file()
+                        with open(CHECKIN_FILE, 'r') as f:
+                            data = json.load(f)
+                        
+                        today = datetime.now().strftime("%Y-%m-%d")
+                        today_records = [r for r in data['records'] if r['date'] == today]
+                        
+                        if not today_records:
+                            send_reply(reply_token, "今日尚無打卡記錄")
+                        else:
+                            report = "📊 今日打卡報表:\n\n"
+                            for idx, record in enumerate(today_records, 1):
+                                report += f"{idx}. {record['name']} - {record['time']}\n   📍 {record['location']}"
+                                if record.get('note'):
+                                    report += f"\n   📝 {record['note']}"
+                                # 添加地圖連結 (如果有經緯度)
+                                if record.get('coordinates'):
+                                    lat = record['coordinates'].get('latitude')
+                                    lng = record['coordinates'].get('longitude')
+                                    if lat and lng:
+                                        map_link = f"https://www.google.com/maps?q={lat},{lng}"
+                                        report += f"\n   🗺️ {map_link}"
+                                report += "\n\n"
+                            
+                            # 如果報表太長，可能需要分段發送
+                            if len(report) > 4000:  # LINE 訊息限制約 5000 字元
+                                parts = [report[i:i+4000] for i in range(0, len(report), 4000)]
+                                for part in parts:
+                                    send_line_message_to_group(part)
+                                send_reply(reply_token, "已將完整報表發送到群組")
+                            else:
+                                send_reply(reply_token, report)
+                    
+                    # 個人歷史
+                    elif command == '歷史' or command == '打卡歷史':
+                        user_id = event['source'].get('userId')
+                        if not user_id:
+                            send_reply(reply_token, "無法獲取用戶信息")
+                            continue
+                            
+                        # 發送個人歷史頁面連結
+                        history_url = f"{APP_URL}/personal-history?userId={user_id}"
+                        send_reply(reply_token, f"請點擊以下連結查看您的打卡歷史：\n{history_url}")
                     
                     # 幫助
                     elif command == '幫助':
@@ -501,7 +526,8 @@ elif command == '打卡報表':
                             "2. 點擊「群組互動」進入群組聊天室\n"
                             "3. 發送「!快速打卡」可直接打卡\n"
                             "4. 發送「!打卡報表」查看今日打卡情況\n"
-                            "5. 發送「!幫助」查看此幫助訊息"
+                            "5. 發送「!歷史」查看個人打卡歷史\n"
+                            "6. 發送「!幫助」查看此幫助訊息"
                         )
                         send_reply(reply_token, help_message)
                 
@@ -513,6 +539,10 @@ elif command == '打卡報表':
                     elif text == '群組聊天' or text == '群組互動':
                         group_url = f'https://liff.line.me/{GROUP_LIFF_ID}'
                         send_reply(reply_token, f"請點擊以下連結進入群組互動頁面：\n{group_url}")
+                    elif text == '歷史' or text == '打卡歷史':
+                        user_id = event['source']['userId']
+                        history_url = f"{APP_URL}/personal-history?userId={user_id}"
+                        send_reply(reply_token, f"請點擊以下連結查看您的打卡歷史：\n{history_url}")
                 
                 # 處理來自群組的消息
                 elif source_type == 'group':
