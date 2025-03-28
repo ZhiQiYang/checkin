@@ -171,14 +171,14 @@ def personal_history():
         for record in user_records
     )
     
-   # 渲染模板
-return render_template(
-    'personal_history.html', 
-    records=user_records, 
-    days=days_filter,
-    has_map_records=has_map_records,
-    google_maps_api_key=GOOGLE_MAPS_API_KEY  # 使用環境變數
-)
+# 渲染模板
+    return render_template(
+        'personal_history.html', 
+        records=user_records, 
+        days=days_filter,
+        has_map_records=has_map_records,
+        google_maps_api_key=GOOGLE_MAPS_API_KEY  # 使用環境變數
+    )
     
 # 保存群組消息
 def save_group_message(user_id, user_name, message, timestamp):
@@ -456,10 +456,10 @@ def webhook():
                             success, message = save_checkin(user_id, display_name, timestamp, "快速打卡")
                             
                            if success:
-    send_checkin_notification(display_name, timestamp, "快速打卡", note="透過指令快速打卡")
-    send_reply(reply_token, f"✅ {message}")
-else:
-    send_reply(reply_token, f"❌ {message}")
+                                send_checkin_notification(display_name, timestamp, "快速打卡", note="透過指令快速打卡")
+                                send_reply(reply_token, f"✅ {message}")
+                            else:
+                                send_reply(reply_token, f"❌ {message}")
                         else:
                             send_reply(reply_token, "無法獲取用戶資料，請使用 LIFF 頁面打卡")
                     
