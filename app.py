@@ -359,29 +359,7 @@ def line_callback():
     else:
         return redirect(f'https://liff.line.me/{LIFF_ID}')
 
-# 打卡API
-@app.route('/api/checkin', methods=['POST'])
-def process_checkin():
-    data = request.json
-    user_id = data.get('userId')
-    display_name = data.get('displayName')
-    location = data.get('location', '未提供位置')
-    
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # 儲存打卡記錄
-    success, message = save_checkin(user_id, display_name, timestamp, location)
-    
-    if success:
-        # 發送LINE通知
-        notification_sent = send_checkin_notification(display_name, timestamp, location)
-        if not notification_sent:
-            message += "（通知發送失敗）"
-    
-    return jsonify({
-        'success': success,
-        'message': message
-    })
+
 
 # 獲取群組消息API
 @app.route('/api/group/messages', methods=['GET'])
