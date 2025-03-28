@@ -11,6 +11,8 @@ app = Flask(__name__)
 # 從環境變量獲取 LINE API 設置
 LINE_LOGIN_CHANNEL_ID = os.environ.get('LINE_LOGIN_CHANNEL_ID')
 LINE_LOGIN_CHANNEL_SECRET = os.environ.get('LINE_LOGIN_CHANNEL_SECRET')
+LINE_GROUP_ID = os.environ.get('LINE_GROUP_ID')
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')  # Google Maps API Key
 LIFF_ID = os.environ.get('LIFF_ID')
 GROUP_LIFF_ID = os.environ.get('GROUP_LIFF_ID')  # 群組互動用的LIFF ID
 MESSAGING_CHANNEL_ACCESS_TOKEN = os.environ.get('MESSAGING_CHANNEL_ACCESS_TOKEN')
@@ -94,6 +96,7 @@ def test_rich_menu():
     else:
         return jsonify({"success": False, "message": "Rich Menu 測試失敗，請查看日誌"})
 
+# 刪除第197-215行的重複函數，保留第82-100行的版本即可
 @app.route('/api/checkin', methods=['POST'])
 def process_checkin():
     data = request.json
@@ -117,6 +120,9 @@ def process_checkin():
         notification_text = f"✅ {display_name} 已於 {timestamp} 完成打卡\n📍 位置: {location}"
         if note:
             notification_text += f"\n📝 備註: {note}"
+        if latitude and longitude:
+            map_link = f"https://www.google.com/maps?q={latitude},{longitude}"
+            notification_text += f"\n🗺️ 查看地圖: {map_link}"
         
         notification_sent = send_line_message_to_group(notification_text)
         if not notification_sent:
