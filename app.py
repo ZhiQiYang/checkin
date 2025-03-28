@@ -9,14 +9,14 @@ import requests
 app = Flask(__name__)
 
 # 從環境變量獲取 LINE API 設置
+# 從環境變量獲取 LINE API 設置
 LINE_LOGIN_CHANNEL_ID = os.environ.get('LINE_LOGIN_CHANNEL_ID')
 LINE_LOGIN_CHANNEL_SECRET = os.environ.get('LINE_LOGIN_CHANNEL_SECRET')
-LINE_GROUP_ID = os.environ.get('LINE_GROUP_ID')
+LINE_GROUP_ID = os.environ.get('LINE_GROUP_ID')  # 刪除第17行的重複定義
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')  # Google Maps API Key
 LIFF_ID = os.environ.get('LIFF_ID')
 GROUP_LIFF_ID = os.environ.get('GROUP_LIFF_ID')  # 群組互動用的LIFF ID
 MESSAGING_CHANNEL_ACCESS_TOKEN = os.environ.get('MESSAGING_CHANNEL_ACCESS_TOKEN')
-LINE_GROUP_ID = os.environ.get('LINE_GROUP_ID')
 
 # Render 服務的 URL
 APP_URL = os.environ.get('APP_URL', 'https://你的應用名稱.onrender.com')
@@ -235,8 +235,19 @@ def send_line_message_to_group(message):
         return False
 
 # 發送打卡通知
-def send_checkin_notification(name, time, location):
+def send_checkin_notification(name, time, location, note=None, latitude=None, longitude=None):
+    # 構建基本消息
     message = f"✅ {name} 已於 {time} 完成打卡\n📍 位置: {location}"
+    
+    # 如果有備註，添加到消息中
+    if note:
+        message += f"\n📝 備註: {note}"
+    
+    # 如果有經緯度，添加地圖連結
+    if latitude and longitude:
+        map_link = f"https://www.google.com/maps?q={latitude},{longitude}"
+        message += f"\n🗺️ 查看地圖: {map_link}"
+    
     return send_line_message_to_group(message)
 
 # 回覆訊息
