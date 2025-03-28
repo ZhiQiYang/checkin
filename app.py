@@ -23,10 +23,13 @@ MESSAGING_CHANNEL_ACCESS_TOKEN = os.environ.get('MESSAGING_CHANNEL_ACCESS_TOKEN'
 # 初始化資料庫
 init_db()
 
-# 匯出 Excel 報表路由
+# 匯出 Excel 報表路由，包含錯誤處理
 @app.route('/export-excel')
 def export_excel():
-    return export_checkin_excel()
+    try:
+        return export_checkin_excel()
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # Render 服務的 URL
