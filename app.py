@@ -5,6 +5,9 @@ import os
 import threading
 import time
 import requests
+from db import init_db
+from export import export_checkin_excel
+
 
 app = Flask(__name__)
 
@@ -16,6 +19,15 @@ GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')  # Google Maps A
 LIFF_ID = os.environ.get('LIFF_ID')
 GROUP_LIFF_ID = os.environ.get('GROUP_LIFF_ID')  # 群組互動用的LIFF ID
 MESSAGING_CHANNEL_ACCESS_TOKEN = os.environ.get('MESSAGING_CHANNEL_ACCESS_TOKEN')
+
+# 初始化資料庫
+init_db()
+
+# 匯出 Excel 報表路由
+@app.route('/export-excel')
+def export_excel():
+    return export_checkin_excel()
+
 
 # Render 服務的 URL
 APP_URL = os.environ.get('APP_URL', 'https://你的應用名稱.onrender.com')
