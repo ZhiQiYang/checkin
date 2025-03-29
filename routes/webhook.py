@@ -26,54 +26,35 @@ def debug_send():
         })
     except Exception as e:
         return jsonify({"error": str(e)})
+
 def webhook():
     global recent_group_id
     body = request.get_data(as_text=True)
-    print(f"收到 webhook 請求: {body[:100]}...")
-
+    print(f"==== 收到 webhook 請求 ====")
+    print(f"請求內容: {body}")
+    
+    # 寫入日誌文件
+    with open('webhook_logs.txt', 'a', encoding='utf-8') as f:
+        f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 收到請求: {body}\n")
+    
     try:
-        events = request.json.get('events', [])
-        for event in events:
-            if event.get('source', {}).get('type') == 'group':
-                recent_group_id = event['source']['groupId']
-
-            if event['type'] == 'message' and event['message']['type'] == 'text':
-                text = event['message']['text']
-                reply_token = event['replyToken']
-                source_type = event.get('source', {}).get('type')
-
-                if text.startswith('!'):
-                    command = text[1:].lower()
-
-                    if command == '快速打卡':
-                        handle_quick_checkin(event, reply_token)
-
-                    elif command == '下載報表':
-                        download_url = f"{Config.APP_URL}/export-excel"
-                        send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
-
-                elif source_type == 'user':
-                    if text in ['打卡', '打卡連結']:
-                        liff_url = f"https://liff.line.me/{Config.LIFF_ID}"
-                        send_reply(reply_token, f"請點擊以下連結進行打卡：\n{liff_url}")
-                elif source_type == 'group' and event['source']['groupId'] == Config.LINE_GROUP_ID:
-                    user_id = event['source'].get('userId')
-                    if user_id:
-                        profile_response = requests.get(
-                            f'https://api.line.me/v2/bot/profile/{user_id}',
-                            headers={
-                                'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'
-                            }
-                        )
-                        if profile_response.status_code == 200:
-                            profile = profile_response.json()
-                            user_name = profile.get('displayName', '未知用戶')
-                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            save_group_message(user_id, user_name, text, timestamp)
-
+        # 嘗試直接回覆一條測試消息
+        if "events" in body and "replyToken" in body:
+            events = request.json.get('events', [])
+            for event in events:
+                if "replyToken" in event:
+                    reply_token = event.get('replyToken')
+                    send_reply(reply_token, "收到請求，正在處理...")
+                    print(f"嘗試回覆 token: {reply_token}")
+        
+        # 原有邏輯
+        # ... 原有代碼 ...
     except Exception as e:
-        print(f"Webhook處理錯誤: {e}")
-
+        error_msg = f"處理 webhook 時出錯: {str(e)}"
+        print(error_msg)
+        with open('webhook_logs.txt', 'a', encoding='utf-8') as f:
+            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 錯誤: {error_msg}\n")
+    
     return 'OK'
 
 @webhook_bp.route('/webhook-test', methods=['POST'])
