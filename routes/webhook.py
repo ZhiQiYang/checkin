@@ -114,6 +114,15 @@ def test_line_api():
         return jsonify({"error": str(e)})
 
 
+@webhook_bp.route('/webhook-debug', methods=['GET', 'POST'])
+def webhook_debug():
+    if request.method == 'POST':
+        body = request.get_data(as_text=True)
+        return f"收到 POST 請求: {body[:100]}..."
+    else:
+        return "webhook 調試端點正常運行"
+
+
 def handle_quick_checkin(event, reply_token):
     user_id = event['source'].get('userId')
     if not user_id:
