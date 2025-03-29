@@ -13,7 +13,23 @@
 <h1>📍 打卡頁面</h1>
 
 <form id="checkinForm">
-  <!-- 表單內容 -->
+  <input type="hidden" id="userId" value="">
+  <input type="hidden" id="displayName" value="">
+
+  <label>位置名稱：</label>
+  <input type="text" id="location" placeholder="例如：台中辦公室">
+
+  <label>備註（選填）：</label>
+  <textarea id="note" rows="3"></textarea>
+
+  <label>緯度：</label>
+  <input type="text" id="latitude" readonly>
+
+  <label>經度：</label>
+  <input type="text" id="longitude" readonly>
+
+  <button type="button" onclick="getLocation()">📍 自動定位</button>
+  <button type="button" onclick="submitCheckin()">✅ 打卡</button>
 </form>
 
 <div id="status"></div>
@@ -22,6 +38,55 @@
 {% block scripts %}
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-  // JavaScript 代碼
+  async function initializeLiff() {
+    await liff.init({ liffId: "{{ liff_id }}" });
+    if (!liff.isLoggedIn()) liff.login();
+    const profile = await liff.getProfile();
+    document.getElementById("userId").value = profile.userId;
+    document.getElementById("displayName").value = profile.displayName;
+  }
+
+  function getLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          document.getElementById("latitude").value = pos.coords.latitude;
+          document.getElementById("longitude").value = pos.coords.longitude;
+          document.getElementById("status").innerText = "✅ 已取得定位資訊";
+        },
+        err => {
+          document.getElementById("status").innerText = "❌ 取得定位失敗";
+        }
+      );
+    } else {
+      document.getElementById("status").innerText = "❌ 瀏覽器不支援定位功能";
+    }
+  }
+
+  function submitCheckin() {
+    const payload = {
+      userId: document.getElementById("userId").value,
+      displayName: document.getElementById("displayName").value,
+      location: document.getElementById("location").value,
+      note: document.getElementById("note").value,
+      latitude: document.getElementById("latitude").value,
+      longitude: document.getElementById("longitude").value,
+    };
+
+    fetch("/api/checkin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("status").innerText = data.message;
+    })
+    .catch(() => {
+      document.getElementById("status").innerText = "❌ 無法送出打卡，請稍後再試";
+    });
+  }
+
+  initializeLiff();
 </script>
 {% endblock %}
