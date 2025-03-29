@@ -29,3 +29,5 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
     data["records"].append(record)
     save_json('checkin_records.json', data)
     return True, "打卡成功", timestamp
+# 在 services/checkin_service.py 文件末尾添加
+save_checkin_record = process_checkin  # 添加別名，向後兼容
