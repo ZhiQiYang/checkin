@@ -6,6 +6,12 @@ from utils.ping_thread import start_keep_alive_thread
 from utils.logger import setup_logger
 
 def create_app(config_class=Config):
+    def check_files():
+    # 檢查並創建必要的檔案
+    from utils.file_helper import ensure_file_exists
+    ensure_file_exists("checkin_records.json", {"records": []})
+    ensure_file_exists("group_messages.json", {"messages": []})
+    print("檔案檢查完成")
     app = Flask(__name__)
     app.config.from_object(config_class)
     
