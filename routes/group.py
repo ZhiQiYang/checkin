@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from datetime import datetime
-from services.group_service import save_group_message, get_recent_messages, send_line_message_to_group
+from services.notification_service import send_line_message_to_group
 
 group_bp = Blueprint('group', __name__)
 
