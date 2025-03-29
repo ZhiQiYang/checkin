@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services.checkin_service import save_checkin_record
+from services.checkin_service import save_checkin
 from services.group_service import save_group_message, get_recent_messages
 from services.notification_service import send_line_message_to_group
 from datetime import datetime
