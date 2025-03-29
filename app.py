@@ -442,53 +442,46 @@ def webhook():
                 recent_group_id = event['source']['groupId']
                 print(f"Found group ID: {recent_group_id}")
             
-            # 正常的消息處理邏輯
+            # 處理文字訊息
             if event['type'] == 'message' and event['message']['type'] == 'text':
                 text = event['message']['text']
                 reply_token = event['replyToken']
                 source_type = event.get('source', {}).get('type')
                 
-                # 處理 Rich Menu 消息
+                # 處理 Rich Menu 指令
                 if text.startswith('!'):
                     command = text[1:].lower()
                     
-                    # 快速打卡
                     if command == '快速打卡':
                         user_id = event['source'].get('userId')
                         if not user_id:
                             send_reply(reply_token, "無法獲取用戶信息，請使用 LIFF 頁面打卡")
-                            continue
-                        elif command == '下載報表':
-                        download_url = f"{APP_URL}/export-excel"
-                        send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
-                            
-                        # 獲取用戶資料
+                            return 'OK'
+
                         profile_response = requests.get(
                             f'https://api.line.me/v2/bot/profile/{user_id}',
-                            headers={
-                                'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'
-                            }
+                            headers={'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'}
                         )
-                        
                         if profile_response.status_code == 200:
                             profile = profile_response.json()
                             display_name = profile.get('displayName', '未知用戶')
-                            
-                            # 進行打卡
                             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            success, message = save_checkin(user_id, display_name, timestamp, "快速打卡")
-                            
+                            success, message = db_save_checkin(
+                                user_id, display_name, "快速打卡", note="透過指令快速打卡"
+                            )
                             if success:
                                 send_checkin_notification(display_name, timestamp, "快速打卡", note="透過指令快速打卡")
                                 send_reply(reply_token, f"✅ {message}")
                             else:
                                 send_reply(reply_token, f"❌ {message}")
                         else:
-                            send_reply(reply_token, "無法獲取用戶資料，請使用 LIFF 頁面打卡")
+                            send_reply(reply_token, "無法取得使用者資料")
                     
-                    # 打卡報表
+                    elif command == '下載報表':
+                        download_url = f"{APP_URL}/export-excel"
+                        send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
+
                     elif command == '打卡報表':
-                        # 獲取今日打卡記錄
                         ensure_checkin_file()
                         with open(CHECKIN_FILE, 'r') as f:
                             data = json.load(f)
@@ -504,36 +497,29 @@ def webhook():
                                 report += f"{idx}. {record['name']} - {record['time']}\n   📍 {record['location']}"
                                 if record.get('note'):
                                     report += f"\n   📝 {record['note']}"
-                                # 添加地圖連結 (如果有經緯度)
                                 if record.get('coordinates'):
                                     lat = record['coordinates'].get('latitude')
                                     lng = record['coordinates'].get('longitude')
                                     if lat and lng:
-                                        map_link = f"https://www.google.com/maps?q={lat},{lng}"
-                                        report += f"\n   🗺️ {map_link}"
+                                        report += f"\n   🗺️ https://www.google.com/maps?q={lat},{lng}"
                                 report += "\n\n"
                             
-                            # 如果報表太長，可能需要分段發送
-                            if len(report) > 4000:  # LINE 訊息限制約 5000 字元
+                            if len(report) > 4000:
                                 parts = [report[i:i+4000] for i in range(0, len(report), 4000)]
                                 for part in parts:
                                     send_line_message_to_group(part)
                                 send_reply(reply_token, "已將完整報表發送到群組")
                             else:
                                 send_reply(reply_token, report)
-                    
-                    # 個人歷史
-                    elif command == '歷史' or command == '打卡歷史':
+
+                    elif command in ['歷史', '打卡歷史']:
                         user_id = event['source'].get('userId')
                         if not user_id:
                             send_reply(reply_token, "無法獲取用戶信息")
                             continue
-                            
-                        # 發送個人歷史頁面連結
                         history_url = f"{APP_URL}/personal-history?userId={user_id}"
                         send_reply(reply_token, f"請點擊以下連結查看您的打卡歷史：\n{history_url}")
-                    
-                    # 幫助
+
                     elif command == '幫助':
                         help_message = (
                             "📱 打卡系統使用說明:\n\n"
@@ -545,50 +531,41 @@ def webhook():
                             "6. 發送「!幫助」查看此幫助訊息"
                         )
                         send_reply(reply_token, help_message)
-                
-                # 處理來自用戶的私聊消息
+
+                # 私人聊天處理
                 if source_type == 'user':
-                    if text == '打卡' or text == '打卡連結':
+                    if text in ['打卡', '打卡連結']:
                         liff_url = f'https://liff.line.me/{LIFF_ID}'
                         send_reply(reply_token, f"請點擊以下連結進行打卡：\n{liff_url}")
-                    elif text == '群組聊天' or text == '群組互動':
+                    elif text in ['群組聊天', '群組互動']:
                         group_url = f'https://liff.line.me/{GROUP_LIFF_ID}'
                         send_reply(reply_token, f"請點擊以下連結進入群組互動頁面：\n{group_url}")
-                    elif text == '歷史' or text == '打卡歷史':
+                    elif text in ['歷史', '打卡歷史']:
                         user_id = event['source']['userId']
                         history_url = f"{APP_URL}/personal-history?userId={user_id}"
                         send_reply(reply_token, f"請點擊以下連結查看您的打卡歷史：\n{history_url}")
-                
-                # 處理來自群組的消息
+
+                # 群組聊天處理
                 elif source_type == 'group':
                     group_id = event['source']['groupId']
-                    
-                    # 如果是目標群組的消息
                     if group_id == LINE_GROUP_ID:
-                        # 嘗試獲取用戶ID（某些情況下可能無法獲取）
                         user_id = event['source'].get('userId')
-                        
                         if user_id:
-                            # 獲取用戶資料
                             profile_response = requests.get(
                                 f'https://api.line.me/v2/bot/profile/{user_id}',
-                                headers={
-                                    'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'
-                                }
+                                headers={'Authorization': f'Bearer {MESSAGING_CHANNEL_ACCESS_TOKEN}'}
                             )
-                            
                             if profile_response.status_code == 200:
                                 profile = profile_response.json()
                                 user_name = profile.get('displayName', '未知用戶')
-                                
-                                # 保存群組消息
                                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 save_group_message(user_id, user_name, text, timestamp)
-    
+
     except Exception as e:
         print(f"Webhook處理錯誤: {e}")
     
     return 'OK'
+
 
 # 建立 Rich Menu
 def create_rich_menu():
