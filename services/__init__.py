@@ -1,4 +1,4 @@
-# 可根據需要將常用服務快速引入
+# services/__init__.py
 from .checkin_service import process_checkin
-from .notification_service import send_line_notification
+from .notification_service import send_line_message_to_group, send_line_notification
 from .group_service import save_group_message, get_recent_messages
