@@ -3,6 +3,7 @@ from flask import Flask
 from config import Config
 from db import init_db
 from utils.ping_thread import start_keep_alive_thread
+from utils.logger import setup_logger
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -36,24 +37,25 @@ def create_app(config_class=Config):
         from datetime import datetime
         return {"status": "alive", "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, 200
     
+    # 錯誤處理
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return "頁面不存在", 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        app.logger.error('服務器錯誤: %s', str(error))
+        return "伺服器內部錯誤", 500
+    
     # 啟動保活線程
     if not app.debug:
         start_keep_alive_thread(app.config['APP_URL'], app.config['KEEP_ALIVE_INTERVAL'])
     
     return app
-# app.py 中添加
-@app.errorhandler(404)
-def not_found_error(error):
-    return "頁面不存在", 404
 
-@app.errorhandler(500)
-def internal_error(error):
-    app.logger.error('服務器錯誤: %s', str(error))
-    return "伺服器內部錯誤", 500
-
-
-# wsgi.py
+# 入口點
 app = create_app()
+app = setup_logger(app)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=app.config['PORT'], debug=app.config['DEBUG'])
