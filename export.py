@@ -22,6 +22,8 @@ def export_checkin_excel():
         df.to_excel(writer, index=False, sheet_name='打卡紀錄')
 
     output.seek(0)
+    print("Exporting rows:")
+    print(df.head())
 
     return send_file(
         output,
