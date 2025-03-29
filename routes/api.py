@@ -7,7 +7,7 @@ from datetime import datetime
 api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/api/checkin', methods=['POST'])
-def process_checkin():
+def handle_checkin():
     data = request.json
     user_id = data.get('userId')
     display_name = data.get('displayName')
@@ -32,30 +32,3 @@ def process_checkin():
             message += "（通知發送失敗）"
 
     return jsonify({'success': success, 'message': message})
-
-
-@api_bp.route('/api/group/messages', methods=['GET'])
-def get_messages():
-    count = int(request.args.get('count', 20))
-    messages = get_recent_messages(count)
-    return jsonify({'success': True, 'messages': messages})
-
-
-@api_bp.route('/api/group/send', methods=['POST'])
-def send_message():
-    data = request.json
-    user_id = data.get('userId')
-    user_name = data.get('userName')
-    message = data.get('message')
-
-    if not user_id or not user_name or not message:
-        return jsonify({'success': False, 'message': '缺少必要參數'})
-
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    line_message = f"💬 {user_name}:\n{message}"
-
-    if send_line_message_to_group(line_message):
-        save_group_message(user_id, user_name, message, timestamp)
-        return jsonify({'success': True, 'message': '訊息已發送'})
-    else:
-        return jsonify({'success': False, 'message': '發送失敗'})
