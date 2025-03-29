@@ -10,7 +10,11 @@ from export import export_checkin_excel
 from db import save_checkin as db_save_checkin  # 加上這行
 
 # 使用 SQLite 的儲存邏輯
-success, message = db_save_checkin(user_id, display_name, location, note=note, latitude=latitude, longitude=longitude)
+# 不要再用 save_checkin()，應改為：
+success, message = db_save_checkin(
+    user_id, display_name, location,
+    note=note, latitude=latitude, longitude=longitude
+)
 
 
 app = Flask(__name__)
