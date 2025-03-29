@@ -7,6 +7,10 @@ import time
 import requests
 from db import init_db
 from export import export_checkin_excel
+from db import save_checkin as db_save_checkin  # 加上這行
+
+# 使用 SQLite 的儲存邏輯
+success, message = db_save_checkin(user_id, display_name, location, note=note, latitude=latitude, longitude=longitude)
 
 
 app = Flask(__name__)
@@ -124,10 +128,12 @@ def process_checkin():
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # 儲存打卡記錄
-    success, message = save_checkin(
-        user_id, display_name, timestamp, location, 
-        note=note, latitude=latitude, longitude=longitude
+    # 使用 SQLite 資料庫寫法
+    success, message = db_save_checkin(
+    user_id, display_name, location, 
+    note=note, latitude=latitude, longitude=longitude
     )
+
     
     if success:
         # 發送 LINE 通知
