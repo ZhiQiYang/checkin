@@ -9,12 +9,7 @@ from db import init_db
 from export import export_checkin_excel
 from db import save_checkin as db_save_checkin  # 加上這行
 
-# 使用 SQLite 的儲存邏輯
-# 不要再用 save_checkin()，應改為：
-success, message = db_save_checkin(
-    user_id, display_name, location,
-    note=note, latitude=latitude, longitude=longitude
-)
+
 
 
 app = Flask(__name__)
@@ -463,9 +458,9 @@ def webhook():
                         if not user_id:
                             send_reply(reply_token, "無法獲取用戶信息，請使用 LIFF 頁面打卡")
                             continue
-                    elif command == '下載報表':
-                    download_url = f"{APP_URL}/export-excel"
-                    send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
+                        elif command == '下載報表':
+                        download_url = f"{APP_URL}/export-excel"
+                        send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
                             
                         # 獲取用戶資料
                         profile_response = requests.get(
