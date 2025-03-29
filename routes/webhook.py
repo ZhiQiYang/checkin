@@ -22,12 +22,13 @@ def webhook():
     try:
         with open('webhook_logs.txt', 'a', encoding='utf-8') as f:
             f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 收到請求: {body}\n")
-    except:
-        print("寫入日誌失敗")
+    except Exception as e:
+        print(f"寫入日誌文件失敗: {e}")
     
     try:
-        # 嘗試直接回覆一條測試消息
         events = request.json.get('events', [])
+        print(f"解析到 {len(events)} 個事件")
+        
         for event in events:
             if event.get('source', {}).get('type') == 'group':
                 recent_group_id = event['source']['groupId']
@@ -41,9 +42,10 @@ def webhook():
 
                 if text.startswith('!'):
                     command = text[1:].lower()
+                    print(f"檢測到指令: {command}")
 
                     if command == '快速打卡':
-                        print(f"處理快速打卡指令")
+                        print("處理快速打卡指令")
                         handle_quick_checkin(event, reply_token)
                         print("快速打卡處理完成")
 
