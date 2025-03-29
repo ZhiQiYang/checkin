@@ -1,4 +1,6 @@
 from flask import Blueprint, jsonify
+import requests
+from config import Config
 from services.rich_menu_service import (
     test_rich_menu_process,
     init_rich_menu_process
