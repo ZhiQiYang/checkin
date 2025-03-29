@@ -463,9 +463,9 @@ def webhook():
                         if not user_id:
                             send_reply(reply_token, "無法獲取用戶信息，請使用 LIFF 頁面打卡")
                             continue
-                        elif command == '下載報表':
-                        download_url = f"{APP_URL}/export-excel"
-                        send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
+                    elif command == '下載報表':
+                    download_url = f"{APP_URL}/export-excel"
+                    send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
                             
                         # 獲取用戶資料
                         profile_response = requests.get(
