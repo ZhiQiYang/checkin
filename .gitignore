@@ -1,0 +1,16 @@
+# Python 暫存檔
+__pycache__/
+*.pyc
+
+# VSCode 等 IDE 設定
+.vscode/
+
+# 虛擬環境
+venv/
+env/
+
+# 系統檔案
+.DS_Store
+
+# 如果你要保留資料庫在版本控制，請不要寫這一行
+# checkin.db
