@@ -41,6 +41,16 @@ def create_app(config_class=Config):
         start_keep_alive_thread(app.config['APP_URL'], app.config['KEEP_ALIVE_INTERVAL'])
     
     return app
+# app.py 中添加
+@app.errorhandler(404)
+def not_found_error(error):
+    return "頁面不存在", 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    app.logger.error('服務器錯誤: %s', str(error))
+    return "伺服器內部錯誤", 500
+
 
 # wsgi.py
 app = create_app()
