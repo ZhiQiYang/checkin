@@ -17,20 +17,20 @@ def process_checkin():
     longitude = data.get('longitude')
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    success, message = save_checkin_record(
+    success, message = save_checkin(
         user_id, display_name, location,
         note=note, latitude=latitude, longitude=longitude
     )
 
     if success:
-        notification = f"\u2705 {display_name} \u5df2\u65bc {timestamp} \u5b8c\u6210\u6253\u5361\n\ud83d\udccd \u4f4d\u7f6e: {location}"
+        notification = f"✅ {display_name} 已於 {timestamp} 完成打卡\n📍 位置: {location}"
         if note:
-            notification += f"\n\ud83d\udcdd \u5099\u8a3b: {note}"
+            notification += f"\n📝 備註: {note}"
         if latitude and longitude:
-            notification += f"\n\ud83d\uddd8\ufe0f https://www.google.com/maps?q={latitude},{longitude}"
+            notification += f"\n🗺️ https://www.google.com/maps?q={latitude},{longitude}"
 
         if not send_line_message_to_group(notification):
-            message += " (\u901a\u77e5\u767c\u9001\u5931\u6557)"
+            message += "（通知發送失敗）"
 
     return jsonify({'success': success, 'message': message})
 
@@ -53,7 +53,7 @@ def send_message():
         return jsonify({'success': False, 'message': '缺少必要參數'})
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    line_message = f"\ud83d\udcac {user_name}:\n{message}"
+    line_message = f"💬 {user_name}:\n{message}"
 
     if send_line_message_to_group(line_message):
         save_group_message(user_id, user_name, message, timestamp)
