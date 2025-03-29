@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services.checkin_service import save_checkin
+from services.checkin_service import process_checkin
 from services.group_service import save_group_message, get_recent_messages
 from services.notification_service import send_line_message_to_group
 from datetime import datetime
@@ -17,7 +17,7 @@ def process_checkin():
     longitude = data.get('longitude')
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    success, message = save_checkin(
+    success, message, timestamp = process_checkin(
         user_id, display_name, location,
         note=note, latitude=latitude, longitude=longitude
     )
