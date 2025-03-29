@@ -1,11 +1,9 @@
-from db.crud import save_checkin
+from datetime import datetime
+from db.crud import save_checkin as db_save_checkin
 
-def handle_checkin(data):
-    user_id = data.get('userId')
-    name = data.get('displayName')
-    location = data.get('location', '未知地點')
-    note = data.get('note')
-    lat = data.get('latitude')
-    lng = data.get('longitude')
-
-    return save_checkin(user_id, name, location, note, lat, lng)
+def process_checkin(user_id, display_name, location, note=None, latitude=None, longitude=None):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    success, message = db_save_checkin(
+        user_id, display_name, location, note, latitude, longitude
+    )
+    return success, message, timestamp
