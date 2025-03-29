@@ -1,7 +1,11 @@
 import sqlite3
 from datetime import datetime
 
-DB_PATH = 'checkin.db'
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'checkin.db')
+
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
