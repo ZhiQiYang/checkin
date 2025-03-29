@@ -4,11 +4,8 @@ from services.group_service import save_group_message, get_recent_messages
 from services.notification_service import send_line_message_to_group
 from datetime import datetime
 from utils.validator import validate_checkin_input
-# 在 app.py 中
-from utils.logger import setup_logger
-app = create_app()
-app = setup_logger(app)
 
+api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/api/checkin', methods=['POST'])
 def handle_checkin():
@@ -18,14 +15,7 @@ def handle_checkin():
     errors = validate_checkin_input(data)
     if errors:
         return jsonify({'success': False, 'message': ', '.join(errors)}), 400
-        
-    # 處理有效的請求...
-
-api_bp = Blueprint('api', __name__)
-
-@api_bp.route('/api/checkin', methods=['POST'])
-def handle_checkin():
-    data = request.json
+    
     user_id = data.get('userId')
     display_name = data.get('displayName')
     location = data.get('location', '未提供位置')
