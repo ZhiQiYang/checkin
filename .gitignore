@@ -1,16 +1,26 @@
-# Python 暫存檔
+# Python 編譯後的暫存檔案
 __pycache__/
-*.pyc
+*.py[cod]
+*.so
 
-# VSCode 等 IDE 設定
+# 系統或編輯器的暫存檔
+.DS_Store
+Thumbs.db
 .vscode/
+.idea/
 
-# 虛擬環境
+# 虛擬環境資料夾
 venv/
 env/
 
-# 系統檔案
-.DS_Store
+# 測試報告或日誌檔案
+*.log
 
-# 如果你要保留資料庫在版本控制，請不要寫這一行
+# 設定檔（如有）但目前你專案中沒看到
+.env
+
+# 匯出報表或暫存檔案
+*.xlsx
+
+# ✅ 若你要把 checkin.db 一起部署到 Render，這行不能加
 # checkin.db
