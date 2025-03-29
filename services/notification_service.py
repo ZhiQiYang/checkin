@@ -43,3 +43,6 @@ def send_reply(reply_token, text):
         )
     except Exception as e:
         print(f"[通知錯誤] 回覆訊息失敗: {e}")
+
+# 在 services/notification_service.py 文件末尾添加
+send_line_notification = send_line_message_to_group  # 添加別名，向後兼容
