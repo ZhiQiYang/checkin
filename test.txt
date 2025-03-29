@@ -1,0 +1,2 @@
+CHECKIN_FILE = os.environ.get("CHECKIN_FILE", "checkin_records.json")
+GROUP_MESSAGES_FILE = os.environ.get("GROUP_MESSAGES_FILE", "group_messages.json")
