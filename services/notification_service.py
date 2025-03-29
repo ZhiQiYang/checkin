@@ -18,3 +18,6 @@ def send_line_message_to_group(message):
     except Exception as e:
         print(f"[通知錯誤] 發送群組訊息失敗: {e}")
         return False
+
+# 在 services/notification_service.py 文件末尾添加
+send_line_notification = send_line_message_to_group  # 添加別名，向後兼容
