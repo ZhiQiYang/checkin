@@ -4,6 +4,11 @@ from services.group_service import save_group_message, get_recent_messages
 from services.notification_service import send_line_message_to_group
 from datetime import datetime
 from utils.validator import validate_checkin_input
+# 在 app.py 中
+from utils.logger import setup_logger
+app = create_app()
+app = setup_logger(app)
+
 
 @api_bp.route('/api/checkin', methods=['POST'])
 def handle_checkin():
