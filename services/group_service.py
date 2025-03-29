@@ -1,7 +1,4 @@
-import json
-from utils.file_helper import ensure_file_exists
-from config import GROUP_MESSAGES_FILE
-from db.storage import ensure_file_exists, load_json, save_json
+from db.storage import load_json, save_json
 from config import Config
 
 def get_recent_messages(count=20):
@@ -25,12 +22,3 @@ def save_group_message(user_id, user_name, message, timestamp):
     data["messages"] = data["messages"][-100:]
     
     save_json(Config.GROUP_MESSAGES_FILE, data)
-    with open(GROUP_MESSAGES_FILE, 'w') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-# 取得最近群組訊息
-def get_recent_messages(count=20):
-    ensure_group_messages_file()
-    with open(GROUP_MESSAGES_FILE, 'r') as f:
-        data = json.load(f)
-    return data["messages"][-count:]
