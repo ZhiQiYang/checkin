@@ -3,6 +3,18 @@ from services.checkin_service import process_checkin as process_checkin_logic
 from services.group_service import save_group_message, get_recent_messages
 from services.notification_service import send_line_message_to_group
 from datetime import datetime
+from utils.validator import validate_checkin_input
+
+@api_bp.route('/api/checkin', methods=['POST'])
+def handle_checkin():
+    data = request.json
+    
+    # 驗證輸入
+    errors = validate_checkin_input(data)
+    if errors:
+        return jsonify({'success': False, 'message': ', '.join(errors)}), 400
+        
+    # 處理有效的請求...
 
 api_bp = Blueprint('api', __name__)
 
