@@ -62,7 +62,7 @@ def webhook():
 
     return 'OK'
 
-@webhook_test.route('/webhook-test', methods=['POST'])
+@webhook_bp.route('/webhook-test', methods=['POST'])
 def webhook():
     print("正在處理 webhook 請求")
     body = request.get_data(as_text=True)
