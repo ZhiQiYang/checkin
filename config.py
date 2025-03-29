@@ -9,6 +9,8 @@ MESSAGING_CHANNEL_ACCESS_TOKEN = os.getenv("MESSAGING_CHANNEL_ACCESS_TOKEN")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 APP_URL = os.getenv("APP_URL", "https://你的應用名稱.onrender.com")
 PORT = int(os.getenv("PORT", 5000))
+# 在 config.py 中添加
+GROUP_MESSAGES_FILE = os.getenv("GROUP_MESSAGES_FILE", "group_messages.json")
 # config.py
 
 class Config:
