@@ -35,6 +35,8 @@ def ping():
     from datetime import datetime
     return {"status": "alive", "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, 200
 
+start_keep_alive_thread(Config.APP_URL, 300)
+
 if __name__ == '__main__':
     # 啟動保活線程
     start_keep_alive_thread()
