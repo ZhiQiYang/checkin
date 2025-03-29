@@ -62,6 +62,44 @@ def webhook():
 
     return 'OK'
 
+@webhook_bp.route('/webhook', methods=['POST'])
+def webhook():
+    print("正在處理 webhook 請求")
+    body = request.get_data(as_text=True)
+    print(f"請求內容: {body}")
+    
+    try:
+        # 直接測試發送回覆
+        events = request.json.get('events', [])
+        for event in events:
+            if event.get('type') == 'message' and event.get('message', {}).get('type') == 'text':
+                text = event.get('message', {}).get('text', '')
+                if text == '!快速打卡':
+                    reply_token = event.get('replyToken')
+                    print(f"嘗試直接回覆 token: {reply_token}")
+                    # 先發送簡單回覆測試基本功能
+                    send_reply(reply_token, "收到打卡指令，處理中...")
+                    # 其他處理...
+    except Exception as e:
+        print(f"處理過程出錯: {str(e)}")
+    
+    return 'OK'
+
+@webhook_bp.route('/test-line-api', methods=['GET'])
+def test_line_api():
+    try:
+        response = requests.get(
+            'https://api.line.me/v2/bot/info',
+            headers={'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'}
+        )
+        return jsonify({
+            "status": response.status_code,
+            "response": response.text
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
 def handle_quick_checkin(event, reply_token):
     user_id = event['source'].get('userId')
     if not user_id:
