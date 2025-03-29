@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import requests
-from services.notification_service import send_reply, send_checkin_notification
+from services.notification_service import send_reply, send_checkin_notification, send_line_message_to_group
 from services.checkin_service import quick_checkin
 from services.group_service import save_group_message
 from config import Config
@@ -12,6 +12,76 @@ webhook_bp = Blueprint('webhook', __name__)
 recent_group_id = None
 
 @webhook_bp.route('/webhook', methods=['POST'])
+def webhook():
+    global recent_group_id
+    body = request.get_data(as_text=True)
+    print(f"==== 收到 webhook 請求 ====")
+    print(f"請求內容: {body}")
+    
+    # 寫入日誌文件
+    try:
+        with open('webhook_logs.txt', 'a', encoding='utf-8') as f:
+            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 收到請求: {body}\n")
+    except:
+        print("寫入日誌失敗")
+    
+    try:
+        # 嘗試直接回覆一條測試消息
+        events = request.json.get('events', [])
+        for event in events:
+            if event.get('source', {}).get('type') == 'group':
+                recent_group_id = event['source']['groupId']
+
+            if event.get('type') == 'message' and event.get('message', {}).get('type') == 'text':
+                text = event.get('message', {}).get('text')
+                reply_token = event.get('replyToken')
+                source_type = event.get('source', {}).get('type')
+                
+                print(f"收到文字訊息: {text}, 回覆令牌: {reply_token}")
+
+                if text.startswith('!'):
+                    command = text[1:].lower()
+
+                    if command == '快速打卡':
+                        print(f"處理快速打卡指令")
+                        handle_quick_checkin(event, reply_token)
+                        print("快速打卡處理完成")
+
+                    elif command == '下載報表':
+                        download_url = f"{Config.APP_URL}/export-excel"
+                        send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
+
+                elif source_type == 'user':
+                    if text in ['打卡', '打卡連結']:
+                        liff_url = f"https://liff.line.me/{Config.LIFF_ID}"
+                        send_reply(reply_token, f"請點擊以下連結進行打卡：\n{liff_url}")
+                
+                elif source_type == 'group' and event['source']['groupId'] == Config.LINE_GROUP_ID:
+                    user_id = event['source'].get('userId')
+                    if user_id:
+                        profile_response = requests.get(
+                            f'https://api.line.me/v2/bot/profile/{user_id}',
+                            headers={
+                                'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'
+                            }
+                        )
+                        if profile_response.status_code == 200:
+                            profile = profile_response.json()
+                            user_name = profile.get('displayName', '未知用戶')
+                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            save_group_message(user_id, user_name, text, timestamp)
+    except Exception as e:
+        error_msg = f"處理 webhook 時出錯: {str(e)}"
+        print(error_msg)
+        try:
+            with open('webhook_logs.txt', 'a', encoding='utf-8') as f:
+                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 錯誤: {error_msg}\n")
+        except:
+            pass
+    
+    return 'OK'
+
+@webhook_bp.route('/debug-send', methods=['GET'])
 def debug_send():
     try:
         # 測試發送訊息到群組
@@ -27,38 +97,8 @@ def debug_send():
     except Exception as e:
         return jsonify({"error": str(e)})
 
-def webhook():
-    global recent_group_id
-    body = request.get_data(as_text=True)
-    print(f"==== 收到 webhook 請求 ====")
-    print(f"請求內容: {body}")
-    
-    # 寫入日誌文件
-    with open('webhook_logs.txt', 'a', encoding='utf-8') as f:
-        f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 收到請求: {body}\n")
-    
-    try:
-        # 嘗試直接回覆一條測試消息
-        if "events" in body and "replyToken" in body:
-            events = request.json.get('events', [])
-            for event in events:
-                if "replyToken" in event:
-                    reply_token = event.get('replyToken')
-                    send_reply(reply_token, "收到請求，正在處理...")
-                    print(f"嘗試回覆 token: {reply_token}")
-        
-        # 原有邏輯
-        # ... 原有代碼 ...
-    except Exception as e:
-        error_msg = f"處理 webhook 時出錯: {str(e)}"
-        print(error_msg)
-        with open('webhook_logs.txt', 'a', encoding='utf-8') as f:
-            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 錯誤: {error_msg}\n")
-    
-    return 'OK'
-
 @webhook_bp.route('/webhook-test', methods=['POST'])
-def webhook_test():  # 這裡改為 webhook_test 而不是 webhook
+def webhook_test():
     print("正在處理 webhook 測試請求")
     body = request.get_data(as_text=True)
     print(f"請求內容: {body}")
@@ -74,7 +114,6 @@ def webhook_test():  # 這裡改為 webhook_test 而不是 webhook
                     print(f"嘗試直接回覆 token: {reply_token}")
                     # 先發送簡單回覆測試基本功能
                     send_reply(reply_token, "收到打卡指令，處理中...")
-                    # 其他處理...
     except Exception as e:
         print(f"處理過程出錯: {str(e)}")
     
@@ -94,7 +133,6 @@ def test_line_api():
     except Exception as e:
         return jsonify({"error": str(e)})
 
-
 @webhook_bp.route('/webhook-debug', methods=['GET', 'POST'])
 def webhook_debug():
     if request.method == 'POST':
@@ -103,6 +141,20 @@ def webhook_debug():
     else:
         return "webhook 調試端點正常運行"
 
+@webhook_bp.route('/send-test-message', methods=['GET'])
+def send_test_message():
+    try:
+        # 嘗試直接發送消息到群組
+        message = f"測試消息 - {datetime.now().strftime('%H:%M:%S')}"
+        success = send_line_message_to_group(message)
+        
+        return jsonify({
+            "success": success,
+            "message": "訊息已發送" if success else "發送失敗",
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 def handle_quick_checkin(event, reply_token):
     user_id = event['source'].get('userId')
