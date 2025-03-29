@@ -12,6 +12,20 @@ webhook_bp = Blueprint('webhook', __name__)
 recent_group_id = None
 
 @webhook_bp.route('/webhook', methods=['POST'])
+def debug_send():
+    try:
+        # 測試發送訊息到群組
+        message = "🔍 測試訊息 - 來自調試功能"
+        success = send_line_message_to_group(message)
+        
+        # 返回結果
+        return jsonify({
+            "success": success,
+            "message": "訊息發送成功" if success else "訊息發送失敗",
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
 def webhook():
     global recent_group_id
     body = request.get_data(as_text=True)
