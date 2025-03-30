@@ -25,14 +25,20 @@ def export_checkin_records():
         days = int(date_range)
         date_from = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
     
-    # 生成Excel檔案
-    excel_file = export_checkin_records_to_excel(user_id, date_from, date_to)
+    # 生成Excel檔案到內存
+    excel_buffer = export_checkin_records_to_excel(user_id, date_from, date_to)
     
-    if not excel_file or not os.path.exists(excel_file):
+    if not excel_buffer:
         return jsonify({'success': False, 'message': '沒有找到符合條件的打卡記錄'}), 404
     
-    # 返回檔案
-    return send_file(excel_file, as_attachment=True)
+    # 返回內存中的Excel文件
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return send_file(
+        excel_buffer,
+        as_attachment=True,
+        download_name=f"checkin_records_{timestamp}.xlsx",
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 @export_bp.route('/export-form')
 def export_form():
