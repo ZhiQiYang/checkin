@@ -69,28 +69,29 @@ def get_recent_messages(count=20):
         })
     return messages
 
-def save_checkin(user_id, name, location, note=None, latitude=None, longitude=None):
+def save_checkin(user_id, name, location, note=None, latitude=None, longitude=None, checkin_type="上班"):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
     # 取得今天日期
     today = datetime.now().strftime('%Y-%m-%d')
 
-    # 檢查是否已打卡
-    c.execute('SELECT * FROM checkin_records WHERE user_id = ? AND date = ?', (user_id, today))
+    # 檢查是否已打卡（同一天同類型）
+    c.execute('SELECT * FROM checkin_records WHERE user_id = ? AND date = ? AND checkin_type = ?', 
+              (user_id, today, checkin_type))
     if c.fetchone():
         conn.close()
-        return False, "今天已經打卡過了"
+        return False, f"今天已經{checkin_type}打卡過了"
 
     now = datetime.now()
     time_str = now.strftime('%H:%M:%S')
 
     # 插入新紀錄
     c.execute('''
-        INSERT INTO checkin_records (user_id, name, location, note, latitude, longitude, date, time)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user_id, name, location, note, latitude, longitude, today, time_str))
+        INSERT INTO checkin_records (user_id, name, location, note, latitude, longitude, date, time, checkin_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, name, location, note, latitude, longitude, today, time_str, checkin_type))
 
     conn.commit()
     conn.close()
-    return True, "打卡成功"
+    return True, f"{checkin_type}打卡成功"
