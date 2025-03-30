@@ -5,7 +5,13 @@
 {% block extra_css %}
 <style>
     button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
-    input, textarea { width: 100%; margin-bottom: 10px; padding: 5px; }
+    input, textarea, select { width: 100%; margin-bottom: 10px; padding: 5px; }
+    .checkin-type-option {
+        padding: 8px;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+        margin-bottom: 15px;
+    }
 </style>
 {% endblock %}
 
@@ -15,6 +21,15 @@
 <form id="checkinForm">
   <input type="hidden" id="userId" value="">
   <input type="hidden" id="displayName" value="">
+
+  <!-- 打卡類型選擇 -->
+  <div class="checkin-type-option">
+    <label>打卡類型：</label>
+    <select id="checkinType">
+      <option value="上班">上班打卡</option>
+      <option value="下班">下班打卡</option>
+    </select>
+  </div>
 
   <label>位置名稱：</label>
   <input type="text" id="location" placeholder="例如：台中辦公室">
@@ -71,6 +86,7 @@
       note: document.getElementById("note").value,
       latitude: document.getElementById("latitude").value,
       longitude: document.getElementById("longitude").value,
+      checkinType: document.getElementById("checkinType").value  // 新增打卡類型
     };
 
     fetch("/api/checkin", {
