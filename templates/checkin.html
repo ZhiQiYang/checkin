@@ -6,11 +6,70 @@
 <style>
     button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
     input, textarea, select { width: 100%; margin-bottom: 10px; padding: 5px; }
-    .checkin-type-option {
-        padding: 8px;
-        background-color: #f9f9f9;
-        border-radius: 5px;
-        margin-bottom: 15px;
+    
+    /* 打卡類型選擇器樣式 */
+    .checkin-type-options {
+        padding: 12px;
+        background-color: #f5f5f5;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .radio-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 8px;
+    }
+    
+    .radio-option {
+        flex: 1;
+        display: block;
+        padding: 12px;
+        border-radius: 6px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: bold;
+    }
+    
+    .radio-option input[type="radio"] {
+        display: none;
+    }
+    
+    .checkin-in {
+        background-color: #e3f2fd;
+        color: #0d47a1;
+        border: 2px solid #90caf9;
+    }
+    
+    .checkin-out {
+        background-color: #fff8e1;
+        color: #ff8f00;
+        border: 2px solid #ffcc80;
+    }
+    
+    .radio-option.selected {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transform: translateY(-2px);
+    }
+    
+    .checkin-in.selected {
+        background-color: #bbdefb;
+        border-color: #1976d2;
+    }
+    
+    .checkin-out.selected {
+        background-color: #ffe0b2;
+        border-color: #f57c00;
+    }
+    
+    /* 打卡按鈕樣式 */
+    .checkin-button-in {
+        background-color: #1976d2 !important;
+    }
+    
+    .checkin-button-out {
+        background-color: #f57c00 !important;
     }
 </style>
 {% endblock %}
@@ -23,12 +82,18 @@
   <input type="hidden" id="displayName" value="">
 
   <!-- 打卡類型選擇 -->
-  <div class="checkin-type-option">
+  <div class="checkin-type-options">
     <label>打卡類型：</label>
-    <select id="checkinType">
-      <option value="上班">上班打卡</option>
-      <option value="下班">下班打卡</option>
-    </select>
+    <div class="radio-group">
+      <label class="radio-option checkin-in">
+        <input type="radio" name="checkinType" value="上班" id="checkinType-in" checked>
+        <span class="radio-label">上班打卡</span>
+      </label>
+      <label class="radio-option checkin-out">
+        <input type="radio" name="checkinType" value="下班" id="checkinType-out">
+        <span class="radio-label">下班打卡</span>
+      </label>
+    </div>
   </div>
 
   <label>位置名稱：</label>
@@ -44,7 +109,7 @@
   <input type="text" id="longitude" readonly>
 
   <button type="button" onclick="getLocation()">📍 自動定位</button>
-  <button type="button" onclick="submitCheckin()">✅ 打卡</button>
+  <button type="button" id="submitButton" class="checkin-button-in" onclick="submitCheckin()">✅ 上班打卡</button>
 </form>
 
 <div id="status"></div>
@@ -79,6 +144,9 @@
   }
 
   function submitCheckin() {
+    // 獲取選中的打卡類型
+    const checkinType = document.querySelector('input[name="checkinType"]:checked').value;
+    
     const payload = {
       userId: document.getElementById("userId").value,
       displayName: document.getElementById("displayName").value,
@@ -86,7 +154,7 @@
       note: document.getElementById("note").value,
       latitude: document.getElementById("latitude").value,
       longitude: document.getElementById("longitude").value,
-      checkinType: document.getElementById("checkinType").value  // 新增打卡類型
+      checkinType: checkinType  // 使用選中的打卡類型
     };
 
     fetch("/api/checkin", {
@@ -103,6 +171,51 @@
     });
   }
 
+  // 切換打卡類型時更新UI
+  function updateCheckinTypeUI() {
+    const checkinInRadio = document.getElementById('checkinType-in');
+    const checkinOutRadio = document.getElementById('checkinType-out');
+    const submitButton = document.getElementById('submitButton');
+    const inOption = document.querySelector('.checkin-in');
+    const outOption = document.querySelector('.checkin-out');
+    
+    // 移除所有 selected 類別
+    inOption.classList.remove('selected');
+    outOption.classList.remove('selected');
+    
+    if (checkinInRadio.checked) {
+      submitButton.innerHTML = "✅ 上班打卡";
+      submitButton.className = "checkin-button-in";
+      inOption.classList.add('selected');
+    } else {
+      submitButton.innerHTML = "✅ 下班打卡";
+      submitButton.className = "checkin-button-out";
+      outOption.classList.add('selected');
+    }
+  }
+  
+  // 監聽打卡類型變更事件
+  document.getElementById('checkinType-in').addEventListener('change', updateCheckinTypeUI);
+  document.getElementById('checkinType-out').addEventListener('change', updateCheckinTypeUI);
+  
+  // 自動選擇建議的打卡類型
+  function autoSelectCheckinType() {
+    const now = new Date();
+    const hour = now.getHours();
+    
+    // 上午默認上班打卡，下午默認下班打卡
+    if (hour >= 12) {
+      document.getElementById('checkinType-out').checked = true;
+    } else {
+      document.getElementById('checkinType-in').checked = true;
+    }
+    
+    // 更新UI顯示
+    updateCheckinTypeUI();
+  }
+  
   initializeLiff();
+  // 初始加載時自動選擇打卡類型
+  autoSelectCheckinType();
 </script>
 {% endblock %}
