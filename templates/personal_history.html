@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
         body {
             padding: 20px;
@@ -25,19 +26,49 @@
             padding: 15px;
             margin-bottom: 15px;
             background-color: #f9f9f9;
+            position: relative;
+            overflow: hidden;
+        }
+        .checkin-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 4px 12px;
+            border-radius: 0 8px 0 8px;
+            font-weight: bold;
+            font-size: 0.8em;
+            color: white;
+        }
+        .checkin-in {
+            background-color: #1976d2;
+        }
+        .checkin-out {
+            background-color: #f57c00;
         }
         .record-date {
             font-weight: bold;
             color: #2c73d2;
             margin-bottom: 5px;
+            font-size: 1.1em;
         }
         .record-time {
             font-size: 1.2em;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .record-time i {
+            margin-right: 8px;
         }
         .record-location {
             color: #555;
             margin-bottom: 5px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .record-location i {
+            margin-right: 8px;
+            margin-top: 3px;
         }
         .record-note {
             font-style: italic;
@@ -45,76 +76,199 @@
             border-left: 3px solid #ccc;
             padding-left: 10px;
             margin-top: 10px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .record-note i {
+            margin-right: 8px;
+            margin-top: 3px;
         }
         .filter-section {
             margin-bottom: 20px;
-            padding: 10px;
+            padding: 15px;
             background-color: #f0f0f0;
-            border-radius: 5px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .no-records {
             text-align: center;
-            padding: 30px;
+            padding: 40px 20px;
             color: #777;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px dashed #ddd;
+        }
+        .map-link {
+            margin-top: 10px;
         }
         .map-link a {
             color: #0066cc;
             text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            background-color: #e3f2fd;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
         }
         .map-link a:hover {
-            text-decoration: underline;
+            background-color: #bbdefb;
+            text-decoration: none;
+        }
+        .map-link i {
+            margin-right: 5px;
+        }
+        .summary-section {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px dashed #ccc;
+        }
+        .summary-label {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .badge-type {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 5px;
+            position: relative;
+            top: 5px;
+        }
+        .day-separator {
+            text-align: center;
+            position: relative;
+            margin: 25px 0;
+        }
+        .day-separator:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background-color: #ddd;
+            z-index: 1;
+        }
+        .day-separator span {
+            background: white;
+            padding: 0 15px;
+            position: relative;
+            z-index: 2;
+            color: #777;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center mb-4">個人打卡歷史紀錄</h1>
+        <h1 class="text-center mb-4">
+            <i class="fas fa-history"></i> 個人打卡歷史紀錄
+        </h1>
 
         <div class="filter-section">
             <form id="filterForm">
-                <div class="form-group">
-                    <label for="dateRange">選擇時間範圍：</label>
+                <div class="form-group mb-0">
+                    <label for="dateRange">
+                        <i class="fas fa-calendar-alt"></i> 選擇時間範圍：
+                    </label>
                     <select id="dateRange" name="dateRange" class="form-control">
                         <option value="7" {% if days == "7" %}selected{% endif %}>最近一週</option>
                         <option value="30" {% if days == "30" %}selected{% endif %}>最近一個月</option>
                         <option value="90" {% if days == "90" %}selected{% endif %}>最近三個月</option>
                         <option value="all" {% if days == "all" %}selected{% endif %}>所有紀錄</option>
                     </select>
-                    <button type="submit" class="btn btn-primary mt-2">套用</button>
+                    <button type="submit" class="btn btn-primary mt-2">
+                        <i class="fas fa-filter"></i> 套用
+                    </button>
                 </div>
             </form>
         </div>
 
         {% if records %}
-            <div class="records-list">
-                {% for record in records %}
-                <div class="record-card">
-                    <div class="record-date">{{ record.date }}</div>
-                    <div class="record-time">{{ record.time }}</div>
-                    <div class="record-location">📍 位置: {{ record.location }}</div>
-
-                    {% if record.note %}
-                    <div class="record-note">📝 備註: {{ record.note }}</div>
-                    {% endif %}
-
-                    {% if record.coordinates and record.coordinates.latitude and record.coordinates.longitude %}
-                    <div class="map-link">
-                        🗺️ <a href="https://www.google.com/maps?q={{ record.coordinates.latitude }},{{ record.coordinates.longitude }}" target="_blank">
-                            查看地圖位置
-                        </a>
-                    </div>
-                    {% endif %}
+            <!-- 摘要統計區 -->
+            <div class="summary-section">
+                <h4 class="mb-3">
+                    <i class="fas fa-chart-pie"></i> 打卡摘要
+                </h4>
+                <div class="summary-item">
+                    <span class="summary-label">總打卡次數：</span>
+                    <span>{{ records|length }} 次</span>
                 </div>
+                <div class="summary-item">
+                    <span class="summary-label">上班打卡：</span>
+                    <span>{{ records|selectattr('checkin_type', 'equalto', '上班')|list|length }} 次</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">下班打卡：</span>
+                    <span>{{ records|selectattr('checkin_type', 'equalto', '下班')|list|length }} 次</span>
+                </div>
+            </div>
+
+            <div class="records-list">
+                {% set current_date = '' %}
+                {% for record in records %}
+                    {% if record.date != current_date %}
+                        {% set current_date = record.date %}
+                        <div class="day-separator">
+                            <span>{{ record.date }}</span>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="record-card">
+                        <!-- 打卡類型標籤 -->
+                        <div class="checkin-badge {% if record.checkin_type == '上班' %}checkin-in{% else %}checkin-out{% endif %}">
+                            {{ record.checkin_type }}
+                        </div>
+                        
+                        <div class="record-date">{{ record.date }}</div>
+                        <div class="record-time">
+                            <i class="fas {% if record.checkin_type == '上班' %}fa-sun text-warning{% else %}fa-moon text-primary{% endif %}"></i>
+                            {{ record.time }}
+                        </div>
+                        
+                        <div class="record-location">
+                            <i class="fas fa-map-marker-alt text-danger"></i>
+                            <div>{{ record.location }}</div>
+                        </div>
+                        
+                        {% if record.note %}
+                        <div class="record-note">
+                            <i class="fas fa-sticky-note text-info"></i>
+                            <div>{{ record.note }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if record.coordinates and record.coordinates.latitude and record.coordinates.longitude %}
+                        <div class="map-link">
+                            <a href="https://www.google.com/maps?q={{ record.coordinates.latitude }},{{ record.coordinates.longitude }}" target="_blank">
+                                <i class="fas fa-map"></i> 查看地圖位置
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
                 {% endfor %}
             </div>
         {% else %}
             <div class="no-records">
+                <i class="fas fa-exclamation-circle fa-2x mb-3 text-muted"></i>
                 <p>目前沒有打卡紀錄</p>
             </div>
         {% endif %}
 
         <div class="text-center mt-4">
-            <a href="javascript:history.back()" class="btn btn-secondary">返回</a>
+            <a href="javascript:history.back()" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> 返回
+            </a>
         </div>
     </div>
 
