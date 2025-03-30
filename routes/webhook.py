@@ -44,13 +44,24 @@ def webhook():
                     command = text[1:].lower()
                     if command == '快速打卡':
                         handle_quick_checkin(event, reply_token)
-                    elif command == '下載報表':
-                        download_url = f"{Config.APP_URL}/export-excel"
-                        send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
+                    elif command == '打卡報表':
+                        # 打卡報表功能
+                        report_url = f"{Config.APP_URL}/personal-history?userId={event['source'].get('userId')}"
+                        send_reply(reply_token, f"📊 您的打卡報表：\n{report_url}")
+                    elif command == '幫助':
+                        # 幫助功能
+                        help_text = (
+                            "📱 打卡系統指令說明：\n"
+                            "!快速打卡 - 快速完成今日打卡\n"
+                            "!打卡報表 - 查看打卡統計報表\n"
+                            "打卡 - 獲取打卡頁面連結\n"
+                            "其他問題請聯繫管理員"
+                        )
+                        send_reply(reply_token, help_text)
                     else:
                         # 其他命令使用默認回覆
                         send_reply(reply_token, default_reply)
-                elif source_type == 'user' and text in ['打卡', '打卡連結']:
+                elif text in ['打卡', '打卡連結']:
                     liff_url = f"https://liff.line.me/{Config.LIFF_ID}"
                     send_reply(reply_token, f"請點擊以下連結進行打卡：\n{liff_url}")
                 else:
