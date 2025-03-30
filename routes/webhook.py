@@ -84,6 +84,45 @@ def webhook():
     
     return 'OK'
 
+@webhook_bp.route('/app-debug', methods=['GET'])
+def app_debug():
+    import sqlite3
+    
+    # 收集應用狀態信息
+    status = {
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "app_running": True,
+        "db_path": Config.DB_PATH
+    }
+    
+    # 測試數據庫連接和查詢
+    try:
+        conn = sqlite3.connect(Config.DB_PATH)
+        c = conn.cursor()
+        
+        # 檢查打卡記錄
+        c.execute("SELECT COUNT(*) FROM checkin_records")
+        status["checkin_count"] = c.fetchone()[0]
+        
+        # 檢查最近打卡
+        c.execute("SELECT * FROM checkin_records ORDER BY id DESC LIMIT 1")
+        last_record = c.fetchone()
+        if last_record:
+            status["last_checkin"] = dict(zip([col[0] for col in c.description], last_record))
+        
+        # 檢查群組消息
+        c.execute("SELECT COUNT(*) FROM group_messages")
+        status["messages_count"] = c.fetchone()[0]
+        
+        conn.close()
+        status["db_connection"] = "OK"
+    except Exception as e:
+        status["db_connection"] = "ERROR"
+        status["db_error"] = str(e)
+    
+    return jsonify(status)
+
+
 @webhook_bp.route('/test-file-system', methods=['GET'])
 def test_file_system():
     try:
