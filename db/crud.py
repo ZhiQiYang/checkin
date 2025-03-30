@@ -281,3 +281,29 @@ def get_users_needing_reminder(reminder_type):
     
     conn.close()
     return users_to_remind
+
+def save_or_update_user(user_id, name, display_name=None):
+    """保存或更新用戶信息"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    # 檢查用戶是否已存在
+    c.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+    user = c.fetchone()
+    
+    if user:
+        # 更新現有用戶
+        c.execute('''
+            UPDATE users 
+            SET name = ?, display_name = COALESCE(?, display_name)
+            WHERE user_id = ?
+        ''', (name, display_name, user_id))
+    else:
+        # 新增用戶
+        c.execute('''
+            INSERT INTO users (user_id, name, display_name)
+            VALUES (?, ?, ?)
+        ''', (user_id, name, display_name))
+    
+    conn.commit()
+    conn.close()
