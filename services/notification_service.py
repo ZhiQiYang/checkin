@@ -44,8 +44,7 @@ def send_reply(reply_token, text):
     except Exception as e:
         print(f"[通知錯誤] 回覆訊息失敗: {e}")
 
-# 在 services/notification_service.py 中添加
-
+# 發送LINE個人通知函數
 def send_line_notification(user_id, message):
     """發送LINE個人通知"""
     try:
@@ -65,5 +64,5 @@ def send_line_notification(user_id, message):
         print(f"[通知錯誤] 發送個人通知失敗: {e}")
         return False
 
-# 添加別名，向後兼容
-send_line_notification = send_line_message_to_group
+# 添加别名（向後兼容），改名避免衝突
+send_line_group_notification = send_line_message_to_group
