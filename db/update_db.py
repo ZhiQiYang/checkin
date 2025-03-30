@@ -1,41 +1,57 @@
+# 替換 db/update_db.py 的內容
 import sqlite3
+import os
 from config import Config
 
 def update_database():
-    """更新數據庫結構，添加 checkin_type 列"""
+    """更新數據庫結構，重建表結構"""
     print("開始更新數據庫結構...")
     
     try:
-        # 連接數據庫
+        # 連接数据库 (如果不存在会创建)
         conn = sqlite3.connect(Config.DB_PATH)
         cursor = conn.cursor()
         
-        # 執行 ALTER TABLE 語句
-        cursor.execute("ALTER TABLE checkin_records ADD COLUMN checkin_type TEXT DEFAULT '上班'")
+        # 删除现有表并重建
+        cursor.execute("DROP TABLE IF EXISTS checkin_records")
+        cursor.execute("DROP TABLE IF EXISTS group_messages")
         
-        # 提交變更
+        # 创建打卡记录表
+        cursor.execute('''
+        CREATE TABLE checkin_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            location TEXT,
+            note TEXT,
+            latitude REAL,
+            longitude REAL,
+            date TEXT NOT NULL,
+            time TEXT NOT NULL,
+            checkin_type TEXT DEFAULT '上班'
+        )
+        ''')
+        
+        # 创建群组消息表
+        cursor.execute('''
+        CREATE TABLE group_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            user_name TEXT NOT NULL,
+            message TEXT,
+            timestamp TEXT NOT NULL
+        )
+        ''')
+        
+        # 提交变更
         conn.commit()
-        print("✅ 數據庫更新成功！添加了 checkin_type 列，默認值為 '上班'")
+        print("✅ 數據庫更新成功！重建了所有必要的表")
         
-        # 驗證更改
-        cursor.execute("PRAGMA table_info(checkin_records)")
-        columns = cursor.fetchall()
-        print("\n當前表結構:")
-        for column in columns:
-            print(f"- {column[1]} ({column[2]})")
+        conn.close()
+        print("\n數據庫連接已關閉")
         
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e).lower():
-            print("⚠️ checkin_type 列已存在，無需更改")
-        else:
-            print(f"❌ 錯誤: {e}")
     except Exception as e:
-        print(f"❌ 發生未知錯誤: {e}")
-    finally:
-        # 關閉連接
-        if 'conn' in locals():
-            conn.close()
-            print("\n數據庫連接已關閉")
+        print(f"❌ 發生錯誤: {e}")
 
 if __name__ == "__main__":
     update_database()
