@@ -40,29 +40,35 @@ def webhook():
                 default_reply = f"收到您的訊息：{text}"
                 
                 # 根據消息內容執行不同的業務邏輯
-                if text.startswith('!'):
-                    command = text[1:].lower()
-                    # 打卡命令處理
-                    if command == '快速打卡' or command == '上班打卡':
-                        handle_quick_checkin(event, reply_token, "上班")
-                    elif command == '下班打卡':
-                        handle_quick_checkin(event, reply_token, "下班")
-                    elif command == '打卡報表':
-                        # 打卡報表功能
-                        report_url = f"{Config.APP_URL}/personal-history?userId={event['source'].get('userId')}"
-                        send_reply(reply_token, f"📊 您的打卡報表：\n{report_url}")
-                    elif command == '幫助':
-                        # 幫助功能
-                        help_text = (
-                            "📱 打卡系統指令說明：\n"
-                            "!上班打卡 - 快速完成上班打卡\n"
-                            "!下班打卡 - 快速完成下班打卡\n"
-                            "!快速打卡 - 快速完成上班打卡（等同於!上班打卡）\n"
-                            "!打卡報表 - 查看打卡統計報表\n"
-                            "打卡 - 獲取打卡頁面連結\n"
-                            "其他問題請聯繫管理員"
-                        )
-                        send_reply(reply_token, help_text)
+                # 在處理命令的部分
+if text.startswith('!'):
+    command = text[1:].lower()
+    # 打卡命令處理
+    if command == '快速打卡' or command == '上班打卡':
+        handle_quick_checkin(event, reply_token, "上班")
+    elif command == '下班打卡':
+        handle_quick_checkin(event, reply_token, "下班")
+    elif command == '打卡報表':
+        # 打卡報表功能
+        report_url = f"{Config.APP_URL}/personal-history?userId={event['source'].get('userId')}"
+        send_reply(reply_token, f"📊 您的打卡報表：\n{report_url}")
+    elif command == '匯出excel' or command == '匯出':
+        # 匯出 Excel 功能
+        export_url = f"{Config.APP_URL}/export-form?userId={event['source'].get('userId')}"
+        send_reply(reply_token, f"📥 您可以透過以下連結匯出打卡記錄：\n{export_url}")
+    elif command == '幫助':
+        # 幫助功能
+        help_text = (
+            "📱 打卡系統指令說明：\n"
+            "!上班打卡 - 快速完成上班打卡\n"
+            "!下班打卡 - 快速完成下班打卡\n"
+            "!快速打卡 - 快速完成上班打卡（等同於!上班打卡）\n"
+            "!打卡報表 - 查看打卡統計報表\n"
+            "!匯出excel - 匯出打卡記錄為Excel檔案\n"
+            "打卡 - 獲取打卡頁面連結\n"
+            "其他問題請聯繫管理員"
+        )
+        send_reply(reply_token, help_text)
                     else:
                         # 其他命令使用默認回覆
                         send_reply(reply_token, default_reply)
