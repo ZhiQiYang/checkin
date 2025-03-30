@@ -42,8 +42,11 @@ def webhook():
                 # 根據消息內容執行不同的業務邏輯
                 if text.startswith('!'):
                     command = text[1:].lower()
-                    if command == '快速打卡':
-                        handle_quick_checkin(event, reply_token)
+                    # 打卡命令處理
+                    if command == '快速打卡' or command == '上班打卡':
+                        handle_quick_checkin(event, reply_token, "上班")
+                    elif command == '下班打卡':
+                        handle_quick_checkin(event, reply_token, "下班")
                     elif command == '打卡報表':
                         # 打卡報表功能
                         report_url = f"{Config.APP_URL}/personal-history?userId={event['source'].get('userId')}"
@@ -52,7 +55,9 @@ def webhook():
                         # 幫助功能
                         help_text = (
                             "📱 打卡系統指令說明：\n"
-                            "!快速打卡 - 快速完成今日打卡\n"
+                            "!上班打卡 - 快速完成上班打卡\n"
+                            "!下班打卡 - 快速完成下班打卡\n"
+                            "!快速打卡 - 快速完成上班打卡（等同於!上班打卡）\n"
                             "!打卡報表 - 查看打卡統計報表\n"
                             "打卡 - 獲取打卡頁面連結\n"
                             "其他問題請聯繫管理員"
