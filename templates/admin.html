@@ -1,0 +1,343 @@
+<!-- templates/admin.html -->
+{% extends "base.html" %}
+
+{% block title %}管理面板{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .card-header {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+    .status-badge {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+    .status-good {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .status-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .status-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .dashboard-item {
+        text-align: center;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        background-color: #f8f9fa;
+    }
+    .dashboard-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #007bff;
+    }
+    .dashboard-label {
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+    .action-button {
+        margin-top: 10px;
+    }
+    .system-info {
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">🔧 系統管理面板</h1>
+    
+    <div class="alert alert-info">
+        <strong>管理員注意：</strong> 此頁面僅供系統管理員使用，請勿分享給他人。
+    </div>
+    
+    <div class="row">
+        <!-- 系統狀態與摘要 -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    系統狀態
+                    <span id="system-status" class="status-badge status-good float-right">正常</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="dashboard-item">
+                                <div id="checkin-count" class="dashboard-value">-</div>
+                                <div class="dashboard-label">打卡總數</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="dashboard-item">
+                                <div id="today-count" class="dashboard-value">-</div>
+                                <div class="dashboard-label">今日打卡</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="dashboard-item">
+                                <div id="user-count" class="dashboard-value">-</div>
+                                <div class="dashboard-label">用戶數</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="dashboard-item">
+                                <div id="cpu-usage" class="dashboard-value">-</div>
+                                <div class="dashboard-label">CPU 使用率</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="system-info mt-3">
+                        <div><strong>系統版本：</strong> <span id="system-version">2025.04.01</span></div>
+                        <div><strong>更新時間：</strong> <span id="update-time">-</span></div>
+                        <div><strong>平台：</strong> <span id="platform-info">-</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 系統日誌 -->
+            <div class="card">
+                <div class="card-header">系統日誌</div>
+                <div class="card-body">
+                    <a href="/admin/logs?userId={{ user_id }}" class="btn btn-primary">查看日誌</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 管理操作 -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">管理操作</div>
+                <div class="card-body">
+                    <button id="backup-db" class="btn btn-success w-100 mb-3">
+                        <i class="fas fa-database"></i> 備份數據庫
+                    </button>
+                    
+                    <button id="clear-cache" class="btn btn-warning w-100 mb-3">
+                        <i class="fas fa-broom"></i> 清理系統缓存
+                    </button>
+                    
+                    <button id="reset-rich-menu" class="btn btn-info w-100 mb-3">
+                        <i class="fas fa-redo"></i> 重置 Rich Menu
+                    </button>
+                    
+                    <hr>
+                    
+                    <div class="mt-3">
+                        <label for="broadcast-message"><strong>發送全群通知：</strong></label>
+                        <textarea id="broadcast-message" class="form-control mb-2" rows="3" placeholder="輸入要發送給所有用戶的消息..."></textarea>
+                        <button id="send-broadcast" class="btn btn-danger w-100">
+                            <i class="fas fa-bullhorn"></i> 發送通知
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 結果提示框 -->
+<div class="modal fade" id="resultModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">操作結果</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-message">
+                操作已完成
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script>
+    // 用戶ID (從伺服器端傳遞)
+    const userId = "{{ user_id }}";
+    
+    // 更新系統資訊
+    function updateSystemInfo() {
+        fetch(`/api/admin/system-info?userId=${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert('error', data.error);
+                    return;
+                }
+                
+                // 更新統計數據
+                document.getElementById('checkin-count').innerText = data.db_stats.checkin_count;
+                document.getElementById('today-count').innerText = data.db_stats.today_count;
+                document.getElementById('user-count').innerText = data.db_stats.user_count;
+                document.getElementById('cpu-usage').innerText = data.cpu_percent + '%';
+                
+                // 更新系統資訊
+                document.getElementById('update-time').innerText = data.time;
+                document.getElementById('platform-info').innerText = data.platform;
+                
+                // 更新系統狀態指示
+                const systemStatus = document.getElementById('system-status');
+                if (data.cpu_percent > 90 || data.memory_percent > 90) {
+                    systemStatus.className = 'status-badge status-danger float-right';
+                    systemStatus.innerText = '過載';
+                } else if (data.cpu_percent > 70 || data.memory_percent > 70) {
+                    systemStatus.className = 'status-badge status-warning float-right';
+                    systemStatus.innerText = '負載較高';
+                } else {
+                    systemStatus.className = 'status-badge status-good float-right';
+                    systemStatus.innerText = '正常';
+                }
+            })
+            .catch(error => {
+                console.error('獲取系統資訊失敗:', error);
+                showAlert('error', '獲取系統資訊失敗');
+            })
+        .catch(error => {
+            console.error('發送全群通知失敗:', error);
+            showModal('發送失敗', '操作過程中發生錯誤');
+        });
+    });
+    
+    // 顯示提示框
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+        
+        document.querySelector('.container').prepend(alertDiv);
+        
+        // 自動消失
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 150);
+        }, 3000);
+    }
+    
+    // 顯示模態框
+    function showModal(title, message) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-message').textContent = message;
+        $('#resultModal').modal('show');
+    }
+    
+    // 頁面加載時更新系統資訊
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSystemInfo();
+        
+        // 每30秒自動更新一次系統資訊
+        setInterval(updateSystemInfo, 30000);
+    });
+    }
+    
+    // 備份數據庫
+    document.getElementById('backup-db').addEventListener('click', function() {
+        fetch('/api/admin/backup-db', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showModal('發送成功', '全群通知已發送');
+                document.getElementById('broadcast-message').value = '';
+            } else {
+                showModal('發送失敗', data.message);
+            } {
+                showModal('備份成功', data.message);
+            } else {
+                showModal('備份失敗', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('備份數據庫失敗:', error);
+            showModal('備份失敗', '操作過程中發生錯誤');
+        });
+    });
+    
+    // 清理系統缓存
+    document.getElementById('clear-cache').addEventListener('click', function() {
+        fetch('/api/admin/clear-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showModal('清理成功', data.message);
+            } else {
+                showModal('清理失敗', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('清理缓存失敗:', error);
+            showModal('清理失敗', '操作過程中發生錯誤');
+        });
+    });
+    
+    // 重置 Rich Menu
+    document.getElementById('reset-rich-menu').addEventListener('click', function() {
+        fetch('/init-rich-menu')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showModal('重置成功', data.message);
+                } else {
+                    showModal('重置失敗', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('重置 Rich Menu 失敗:', error);
+                showModal('重置失敗', '操作過程中發生錯誤');
+            });
+    });
+    
+    // 發送全群通知
+    document.getElementById('send-broadcast').addEventListener('click', function() {
+        const message = document.getElementById('broadcast-message').value.trim();
+        
+        if (!message) {
+            showAlert('error', '消息不能為空');
+            return;
+        }
+        
+        fetch('/api/admin/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                userId: userId,
+                message: message 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success)
