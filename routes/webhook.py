@@ -846,5 +846,242 @@ def function_test():
         }
     
     return jsonify(result)
+# 在 routes/webhook.py 中添加這個端點
+@webhook_bp.route('/emergency-db-fix', methods=['GET'])
+def emergency_db_fix():
+    import sqlite3
+    from config import Config
+    from datetime import datetime
+    import os
+    
+    result = {
+        "時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "操作": "數據庫緊急修復"
+    }
+    
+    try:
+        # 檢查數據庫是否存在
+        if os.path.exists(Config.DB_PATH):
+            # 備份數據庫
+            backup_path = f"{Config.DB_PATH}.bak.{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            import shutil
+            shutil.copy2(Config.DB_PATH, backup_path)
+            result["備份"] = f"數據庫已備份為 {backup_path}"
+            
+            # 連接數據庫
+            conn = sqlite3.connect(Config.DB_PATH)
+            c = conn.cursor()
+            
+            # 檢查表結構
+            c.execute("PRAGMA table_info(checkin_records)")
+            columns = c.fetchall()
+            column_names = [col[1] for col in columns]
+            result["現有欄位"] = column_names
+            
+            # 檢查是否有 checkin_type 欄位
+            if "checkin_type" not in column_names:
+                # 添加 checkin_type 欄位
+                try:
+                    c.execute("ALTER TABLE checkin_records ADD COLUMN checkin_type TEXT DEFAULT '上班'")
+                    conn.commit()
+                    result["修改"] = "成功添加 checkin_type 欄位"
+                except sqlite3.OperationalError as e:
+                    if "duplicate column name" in str(e):
+                        result["修改"] = "欄位已存在，無需添加"
+                    else:
+                        raise
+            else:
+                result["修改"] = "欄位已存在，無需添加"
+            
+            # 驗證修改
+            c.execute("PRAGMA table_info(checkin_records)")
+            updated_columns = c.fetchall()
+            result["更新後欄位"] = [col[1] for col in updated_columns]
+            
+            # 關閉連接
+            conn.close()
+        else:
+            # 創建新數據庫
+            result["狀態"] = "數據庫不存在，創建新數據庫"
+            conn = sqlite3.connect(Config.DB_PATH)
+            c = conn.cursor()
+            
+            # 建立打卡紀錄表格
+            c.execute('''
+                CREATE TABLE checkin_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    location TEXT,
+                    note TEXT,
+                    latitude REAL,
+                    longitude REAL,
+                    date TEXT NOT NULL,
+                    time TEXT NOT NULL,
+                    checkin_type TEXT DEFAULT '上班'
+                )
+            ''')
+            
+            # 建立群組訊息表格
+            c.execute('''
+                CREATE TABLE group_messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    user_name TEXT NOT NULL,
+                    message TEXT,
+                    timestamp TEXT NOT NULL
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+            result["創建"] = "數據庫和表格創建成功"
+        
+        # 測試記錄
+        try:
+            from services.checkin_service import process_checkin
+            success, message, timestamp = process_checkin(
+                "emergency_fix", 
+                "系統修復", 
+                "緊急修復", 
+                note="系統緊急修復測試", 
+                checkin_type="上班"
+            )
+            
+            result["測試記錄"] = {
+                "成功": success,
+                "消息": message,
+                "時間": timestamp
+            }
+        except Exception as e:
+            result["測試記錄"] = {"錯誤": str(e)}
+        
+    except Exception as e:
+        import traceback
+        result["錯誤"] = str(e)
+        result["詳細錯誤"] = traceback.format_exc()
+    
+    return jsonify(result)
 
+# 在 routes/webhook.py 中添加這個端點
+@webhook_bp.route('/rebuild-checkin-function', methods=['GET'])
+def rebuild_checkin_function():
+    result = {
+        "操作": "重建打卡函數"
+    }
+    
+    try:
+        # 重寫 save_checkin 函數
+        save_checkin_code = '''
+def save_checkin(user_id, name, location, note=None, latitude=None, longitude=None, checkin_type="上班"):
+    """保存打卡記錄到數據庫"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
 
+        # 取得今天日期
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # 直接使用 date, user_id 作為條件，忽略 checkin_type
+        c.execute('SELECT * FROM checkin_records WHERE user_id = ? AND date = ?', 
+                (user_id, today))
+        
+        if c.fetchone():
+            conn.close()
+            return False, f"今天已經打卡過了"
+
+        now = datetime.now()
+        time_str = now.strftime('%H:%M:%S')
+
+        # 插入新紀錄，不使用 checkin_type 欄位
+        c.execute('''
+            INSERT INTO checkin_records (user_id, name, location, note, latitude, longitude, date, time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, name, location, note, latitude, longitude, today, time_str))
+
+        conn.commit()
+        conn.close()
+        return True, "打卡成功"
+    except Exception as e:
+        print(f"保存打卡記錄錯誤: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return False, f"數據庫錯誤: {str(e)}"
+'''
+        
+        # 測試改進後的函數
+        import sqlite3
+        from datetime import datetime
+        from config import Config
+        
+        DB_PATH = Config.DB_PATH
+        
+        # 臨時定義函數
+        def temp_save_checkin(user_id, name, location, note=None, latitude=None, longitude=None, checkin_type="上班"):
+            """臨時測試用的保存打卡函數"""
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                c = conn.cursor()
+
+                # 取得今天日期
+                today = datetime.now().strftime('%Y-%m-%d')
+                
+                # 直接使用 date, user_id 作為條件，忽略 checkin_type
+                c.execute('SELECT * FROM checkin_records WHERE user_id = ? AND date = ?', 
+                        (user_id, today))
+                
+                if c.fetchone():
+                    conn.close()
+                    return False, f"今天已經打卡過了"
+
+                now = datetime.now()
+                time_str = now.strftime('%H:%M:%S')
+
+                # 檢查表是否有 checkin_type 欄位
+                c.execute("PRAGMA table_info(checkin_records)")
+                columns = [col[1] for col in c.fetchall()]
+                
+                if "checkin_type" in columns:
+                    # 有 checkin_type 欄位，使用完整 SQL
+                    c.execute('''
+                        INSERT INTO checkin_records (user_id, name, location, note, latitude, longitude, date, time, checkin_type)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (user_id, name, location, note, latitude, longitude, today, time_str, checkin_type))
+                else:
+                    # 沒有 checkin_type 欄位，使用簡化 SQL
+                    c.execute('''
+                        INSERT INTO checkin_records (user_id, name, location, note, latitude, longitude, date, time)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (user_id, name, location, note, latitude, longitude, today, time_str))
+
+                conn.commit()
+                conn.close()
+                return True, "打卡成功"
+            except Exception as e:
+                print(f"保存打卡記錄錯誤: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                return False, f"數據庫錯誤: {str(e)}"
+        
+        # 測試函數
+        success, message = temp_save_checkin(
+            "test_rebuild", 
+            "重建測試", 
+            "函數重建測試", 
+            note="函數重建測試", 
+            checkin_type="上班"
+        )
+        
+        result["測試結果"] = {
+            "成功": success,
+            "消息": message
+        }
+        
+        result["建議"] = "請複製上面的函數代碼，替換 db/crud.py 中的 save_checkin 函數"
+        
+    except Exception as e:
+        import traceback
+        result["錯誤"] = str(e)
+        result["詳細錯誤"] = traceback.format_exc()
+    
+    return jsonify(result)
