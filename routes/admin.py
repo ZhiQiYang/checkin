@@ -11,7 +11,7 @@ from services.notification_service import send_line_message_to_group
 admin_bp = Blueprint('admin', __name__)
 
 # 定義管理員列表 - 替換為您的 LINE 用戶 ID
-ADMIN_IDS = ['您的LINE用戶ID']  # 例如: 'U1234567890abcdef1234567890abcdef'
+ADMIN_IDS = ['Ue6187f41a8e5ea17723d3cf10cc7c188']  # 例如: 'U1234567890abcdef1234567890abcdef'
 
 # 簡易函數判斷用戶是否為管理員
 def is_admin(user_id):
