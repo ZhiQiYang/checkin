@@ -22,14 +22,16 @@ def handle_checkin():
     note = data.get('note')
     latitude = data.get('latitude')
     longitude = data.get('longitude')
+    checkin_type = data.get('checkinType', '上班')  # 默認上班打卡
 
     success, message, timestamp = process_checkin_logic(
         user_id, display_name, location,
-        note=note, latitude=latitude, longitude=longitude
+        note=note, latitude=latitude, longitude=longitude, 
+        checkin_type=checkin_type
     )
 
     if success:
-        notification = f"✅ {display_name} 已於 {timestamp} 完成打卡\n📍 位置: {location}"
+        notification = f"✅ {display_name} 已於 {timestamp} 完成{checkin_type}打卡\n📍 位置: {location}"
         if note:
             notification += f"\n📝 備註: {note}"
         if latitude and longitude:
