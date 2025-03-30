@@ -29,11 +29,21 @@ def webhook():
             if event.get('source', {}).get('type') == 'group':
                 recent_group_id = event['source']['groupId']
 
-            if event.get('source', {}).get('userId'):
+           if (event.get('type') == 'message' and 
+                event.get('message', {}).get('type') == 'text' and 
+                event.get('replyToken') and
+                event.get('source', {}).get('userId')):    
+                text = event.get('message', {}).get('text')
+                reply_token = event.get('replyToken')
                 user_id = event['source'].get('userId')
-                print(f"用戶 ID: {user_id}")  # 這會在伺服器日誌中顯示您的 ID
-                # 或直接回覆給您
-                send_reply(reply_token, f"您的用戶 ID 是: {user_id}")
+    
+    # 顯示用戶 ID 在伺服器日誌
+    print(f"用戶 ID: {user_id}")
+    
+    # 如果消息內容是 "查詢ID"，回覆用戶 ID
+    if text == "查詢ID":
+        send_reply(reply_token, f"您的用戶 ID 是: {user_id}")
+        return 'OK'  # 處理完畢，跳過其他邏輯
             
             # 處理文字消息
             if (event.get('type') == 'message' and 
