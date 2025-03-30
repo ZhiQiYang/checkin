@@ -1,38 +1,17 @@
 # services/checkin_service.py
 from datetime import datetime
-from db.storage import load_json, save_json
-from config import Config
+from db.crud import save_checkin
 
 def process_checkin(user_id, name, location, note=None, latitude=None, longitude=None):
-    """處理打卡，保存打卡記錄"""
-    data = load_json(Config.CHECKIN_FILE, {"records": []})
-    today = datetime.now().strftime("%Y-%m-%d")
+    """處理打卡，保存打卡記錄到數據庫"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    today = datetime.now().strftime("%Y-%m-%d")
+    time_str = datetime.now().strftime("%H:%M:%S")
     
-    # 檢查是否已打卡
-    for r in data['records']:
-        if r['user_id'] == user_id and r['date'] == today:
-            return False, "今天已經打卡過了", timestamp
+    # 使用資料庫函數保存打卡記錄
+    success, message = save_checkin(user_id, name, location, note, latitude, longitude)
     
-    # 創建記錄
-    record = {
-        "user_id": user_id,
-        "name": name,
-        "date": today,
-        "time": timestamp,
-        "location": location,
-        "note": note
-    }
-    
-    if latitude and longitude:
-        record["coordinates"] = {
-            "latitude": float(latitude),
-            "longitude": float(longitude)
-        }
-    
-    data["records"].append(record)
-    save_json(Config.CHECKIN_FILE, data)
-    return True, "打卡成功", timestamp
+    return success, message, timestamp
 
 def quick_checkin(user_id, name):
     """快速打卡功能"""
