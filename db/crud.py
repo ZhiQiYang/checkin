@@ -79,7 +79,7 @@ def save_checkin(user_id, name, location, note=None, latitude=None, longitude=No
         # 取得今天日期
         today = datetime.now().strftime('%Y-%m-%d')
         
-        # 簡化查詢條件，只檢查用戶和日期
+        # 簡化查詢，不使用 checkin_type
         c.execute('SELECT * FROM checkin_records WHERE user_id = ? AND date = ?', 
                 (user_id, today))
         
@@ -90,28 +90,15 @@ def save_checkin(user_id, name, location, note=None, latitude=None, longitude=No
         now = datetime.now()
         time_str = now.strftime('%H:%M:%S')
 
-        # 檢查表格是否有 checkin_type 欄位
-        c.execute("PRAGMA table_info(checkin_records)")
-        columns = [col[1] for col in c.fetchall()]
-        
-        if "checkin_type" in columns:
-            # 有 checkin_type 欄位，使用完整 SQL
-            c.execute('''
-                INSERT INTO checkin_records (user_id, name, location, note, latitude, longitude, date, time, checkin_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, name, location, note, latitude, longitude, today, time_str, checkin_type))
-        else:
-            # 沒有 checkin_type 欄位，使用簡化 SQL
-            c.execute('''
-                INSERT INTO checkin_records (user_id, name, location, note, latitude, longitude, date, time)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, name, location, note, latitude, longitude, today, time_str))
+        # 插入新紀錄
+        c.execute('''
+            INSERT INTO checkin_records (user_id, name, location, note, latitude, longitude, date, time, checkin_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, name, location, note, latitude, longitude, today, time_str, checkin_type))
 
         conn.commit()
         conn.close()
         return True, f"{checkin_type}打卡成功"
     except Exception as e:
         print(f"保存打卡記錄錯誤: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
         return False, f"數據庫錯誤: {str(e)}"
