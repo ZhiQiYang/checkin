@@ -1,3 +1,5 @@
+#routes/rich_menu.py
+
 from flask import Blueprint, jsonify
 import requests
 from config import Config
