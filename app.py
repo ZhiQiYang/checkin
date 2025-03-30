@@ -58,6 +58,28 @@ def create_app(config_class=Config):
     def not_found_error(error):
         return "頁面不存在", 404
 
+    @app.route('/debug-error')
+    def debug_error():
+    try:
+        # 嘗試連接數據庫並查詢
+        import sqlite3
+        conn = sqlite3.connect(Config.DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = c.fetchall()
+        
+        result = {"tables": [t[0] for t in tables]}
+        
+        # 檢查表結構
+        for table in result["tables"]:
+            c.execute(f"PRAGMA table_info({table})")
+            columns = c.fetchall()
+            result[f"{table}_columns"] = [col[1] for col in columns]
+        
+        conn.close()
+        return result
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
     @app.errorhandler(500)
     def internal_error(error):
         app.logger.error('服務器錯誤: %s', str(error))
