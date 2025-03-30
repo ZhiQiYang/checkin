@@ -108,7 +108,7 @@ def webhook_response_test():
     print(f"請求內容: {body}")
     
     result = {
-        " MAMreceived": True,
+        "received": True,
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "events": []
     }
@@ -282,7 +282,6 @@ def debug_send():
     except Exception as e:
         return jsonify({"error": str(e)})
 
-# 在 routes/webhook.py 中添加
 @webhook_bp.route('/view-logs', methods=['GET'])
 def view_logs():
     try:
@@ -384,7 +383,6 @@ def send_test_message():
     except Exception as e:
         return jsonify({"error": str(e)})
 
-# 更新 routes/webhook.py 中的 handle_quick_checkin 函數
 def handle_quick_checkin(event, reply_token, checkin_type="上班"):
     try:
         print(f"執行快速打卡: {checkin_type}")
@@ -452,7 +450,6 @@ def handle_quick_checkin(event, reply_token, checkin_type="上班"):
         # 返回更詳細的錯誤信息
         send_reply(reply_token, f"處理打卡請求時出錯: {str(e)[:30]}...")
 
-# 在 routes/webhook.py 中添加一個測試端點
 @webhook_bp.route('/test-quick-checkin/<user_id>/<name>/<checkin_type>', methods=['GET'])
 def test_quick_checkin(user_id, name, checkin_type="上班"):
     """測試快速打卡的端點"""
@@ -473,7 +470,6 @@ def test_quick_checkin(user_id, name, checkin_type="上班"):
     
     return jsonify(result)
 
-# 添加到 routes/webhook.py
 @webhook_bp.route('/fix-database', methods=['GET'])
 def fix_database():
     try:
@@ -849,7 +845,6 @@ def function_test():
     
     return jsonify(result)
 
-# 在 routes/webhook.py 中添加這個端點
 @webhook_bp.route('/emergency-db-fix', methods=['GET'])
 def emergency_db_fix():
     import sqlite3
@@ -966,7 +961,6 @@ def emergency_db_fix():
     
     return jsonify(result)
 
-# 在 routes/webhook.py 中添加這個端點
 @webhook_bp.route('/rebuild-checkin-function', methods=['GET'])
 def rebuild_checkin_function():
     result = {
