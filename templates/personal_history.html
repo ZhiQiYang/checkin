@@ -167,6 +167,24 @@
             color: #777;
             font-size: 0.9em;
         }
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .excel-btn {
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .excel-btn:hover {
+            background-color: #1b5e20;
+            color: white;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
@@ -175,23 +193,34 @@
             <i class="fas fa-history"></i> 個人打卡歷史紀錄
         </h1>
 
+        <!-- 篩選與匯出功能區域 -->
         <div class="filter-section">
-            <form id="filterForm">
-                <div class="form-group mb-0">
-                    <label for="dateRange">
-                        <i class="fas fa-calendar-alt"></i> 選擇時間範圍：
-                    </label>
-                    <select id="dateRange" name="dateRange" class="form-control">
-                        <option value="7" {% if days == "7" %}selected{% endif %}>最近一週</option>
-                        <option value="30" {% if days == "30" %}selected{% endif %}>最近一個月</option>
-                        <option value="90" {% if days == "90" %}selected{% endif %}>最近三個月</option>
-                        <option value="all" {% if days == "all" %}selected{% endif %}>所有紀錄</option>
-                    </select>
-                    <button type="submit" class="btn btn-primary mt-2">
-                        <i class="fas fa-filter"></i> 套用
-                    </button>
+            <div class="row">
+                <div class="col-md-8">
+                    <form id="filterForm">
+                        <input type="hidden" name="userId" value="{{ request.args.get('userId') }}">
+                        <div class="form-group mb-0">
+                            <label for="dateRange">
+                                <i class="fas fa-calendar-alt"></i> 選擇時間範圍：
+                            </label>
+                            <select id="dateRange" name="dateRange" class="form-control">
+                                <option value="7" {% if days == "7" %}selected{% endif %}>最近一週</option>
+                                <option value="30" {% if days == "30" %}selected{% endif %}>最近一個月</option>
+                                <option value="90" {% if days == "90" %}selected{% endif %}>最近三個月</option>
+                                <option value="all" {% if days == "all" %}selected{% endif %}>所有紀錄</option>
+                            </select>
+                            <button type="submit" class="btn btn-primary mt-2">
+                                <i class="fas fa-filter"></i> 套用
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+                <div class="col-md-4 d-flex align-items-end justify-content-end">
+                    <a href="/export/checkin-records?userId={{ request.args.get('userId') }}&dateRange={{ days }}" class="btn excel-btn mt-2">
+                        <i class="fas fa-file-excel"></i> 匯出Excel
+                    </a>
+                </div>
+            </div>
         </div>
 
         {% if records %}
@@ -211,6 +240,32 @@
                 <div class="summary-item">
                     <span class="summary-label">下班打卡：</span>
                     <span>{{ records|selectattr('checkin_type', 'equalto', '下班')|list|length }} 次</span>
+                </div>
+                
+                <!-- 計算工作時長（如果有同一天的上下班記錄） -->
+                {% set work_days = {} %}
+                {% for record in records %}
+                    {% if record.date not in work_days %}
+                        {% set _ = work_days.update({record.date: {'上班': None, '下班': None}}) %}
+                    {% endif %}
+                    {% if record.checkin_type == '上班' and not work_days[record.date]['上班'] %}
+                        {% set _ = work_days[record.date].update({'上班': record.time}) %}
+                    {% endif %}
+                    {% if record.checkin_type == '下班' and not work_days[record.date]['下班'] %}
+                        {% set _ = work_days[record.date].update({'下班': record.time}) %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% set complete_days = 0 %}
+                {% for date, times in work_days.items() %}
+                    {% if times['上班'] and times['下班'] %}
+                        {% set complete_days = complete_days + 1 %}
+                    {% endif %}
+                {% endfor %}
+                
+                <div class="summary-item">
+                    <span class="summary-label">完整打卡天數：</span>
+                    <span>{{ complete_days }} 天</span>
                 </div>
             </div>
 
@@ -265,10 +320,16 @@
             </div>
         {% endif %}
 
-        <div class="text-center mt-4">
+        <div class="action-buttons">
             <a href="javascript:history.back()" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> 返回
             </a>
+            
+            {% if records %}
+            <a href="/export/checkin-records?userId={{ request.args.get('userId') }}&dateRange={{ days }}" class="excel-btn">
+                <i class="fas fa-file-excel"></i> 匯出Excel
+            </a>
+            {% endif %}
         </div>
     </div>
 
