@@ -56,9 +56,9 @@ def export_checkin_records_to_excel(user_id=None, date_from=None, date_to=None):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"exports/checkin_records_{timestamp}.xlsx"
     
-    # 寫入Excel
-    writer = pd.ExcelWriter(filename, engine='openpyxl')
-    df.to_excel(writer, index=False, sheet_name='打卡記錄')
+    # 使用上下文管理器寫入Excel (修改這部分)
+    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='打卡記錄')
     
     # 自動調整列寬
     worksheet = writer.sheets['打卡記錄']
