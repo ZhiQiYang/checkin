@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
+import json
 import requests
 from services.notification_service import send_reply, send_checkin_notification, send_line_message_to_group
 from services.checkin_service import quick_checkin
