@@ -157,11 +157,11 @@ def webhook():
                         except Exception as e:
                             send_reply(reply_token, f"❌ 獲取系統狀態時出錯: {str(e)[:30]}...")
                     elif command == '管理指令':
-                        # 檢查是否為管理員
-                        user_id = event['source'].get('userId')
-                        admin_ids = ['U123456789abcdef', 'U987654321abcdef']  # 這裡設置管理員的用戶ID列表
-                        
-                        if user_id in admin_ids:
+    # 檢查是否為管理員
+    user_id = event['source'].get('userId')
+    from routes.admin import ADMIN_IDS  # 導入管理員列表
+    
+    if user_id in ADMIN_IDS:
                             admin_help = (
                                 "🔧 管理員指令列表：\n"
                                 "!重置菜單 - 重置LINE Rich Menu\n"
@@ -173,12 +173,12 @@ def webhook():
                             send_reply(reply_token, admin_help)
                         else:
                             send_reply(reply_token, "⚠️ 您不是管理員，無法查看管理指令")
-                    elif command == '重置菜單' and event['source'].get('userId') in ['U123456789abcdef', 'U987654321abcdef']:
+                    elif command == '重置菜單' and event['source'].get('userId') in ADMIN_IDS:
                         # 重置Rich Menu (僅管理員)
                         from services.rich_menu_service import init_rich_menu_process
                         success, message = init_rich_menu_process()
                         send_reply(reply_token, f"{'✅' if success else '❌'} {message}")
-                    elif command == '診斷系統' and event['source'].get('userId') in ['U123456789abcdef', 'U987654321abcdef']:
+                    elif command == '診斷系統' and event['source'].get('userId') in ADMIN_IDS:
                         # 執行系統診斷 (僅管理員)
                         send_reply(reply_token, "🔍 系統診斷已啟動，報告將稍後發送")
                         
