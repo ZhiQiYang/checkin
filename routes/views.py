@@ -11,3 +11,7 @@ def checkin_page():
 @views_bp.route('/group')
 def group_page():
     return render_template('group.html', liff_id=Config.GROUP_LIFF_ID)
+
+@views_bp.route('/reminder-settings')
+def reminder_settings():
+    return render_template('reminder_settings.html', liff_id=Config.LIFF_ID)
