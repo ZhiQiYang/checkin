@@ -282,14 +282,32 @@ def debug_send():
     except Exception as e:
         return jsonify({"error": str(e)})
 
+# 在 routes/webhook.py 中添加
 @webhook_bp.route('/view-logs', methods=['GET'])
 def view_logs():
     try:
-        with open('webhook_logs.txt', 'r', encoding='utf-8') as f:
-            logs = f.read()
-        return f"<pre>{logs}</pre>"
+        import os
+        # 檢查日誌文件是否存在
+        log_files = []
+        if os.path.exists('logs'):
+            log_files = [f for f in os.listdir('logs') if f.endswith('.log')]
+        
+        # 查找可能的日誌文件
+        possible_logs = ['logs/app.log', 'app.log', 'error.log']
+        log_content = "找不到日誌文件"
+        
+        # 嘗試讀取日誌文件
+        for log_file in possible_logs + ['logs/' + f for f in log_files]:
+            if os.path.exists(log_file):
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    # 讀取最後1000行
+                    lines = f.readlines()[-1000:]
+                    log_content = ''.join(lines)
+                break
+        
+        return f"<pre>{log_content}</pre>"
     except Exception as e:
-        return f"讀取日誌檔案失敗: {str(e)}"
+        return f"讀取日誌失敗: {str(e)}"
 
 @webhook_bp.route('/webhook-test', methods=['POST'])
 def webhook_test():
@@ -374,31 +392,65 @@ def handle_quick_checkin(event, reply_token, checkin_type="上班"):
         if not user_id:
             send_reply(reply_token, "無法獲取用戶信息，請使用 LIFF 頁面打卡")
             return
-
+            
         # 使用靜態用戶名進行測試
         display_name = "用戶" 
+        
+        # 獲取用戶資料 - 添加詳細日誌
         try:
+            print(f"嘗試獲取用戶資料: {user_id}")
             profile_response = requests.get(
                 f'https://api.line.me/v2/bot/profile/{user_id}',
                 headers={'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'}
             )
+            print(f"獲取用戶資料響應狀態: {profile_response.status_code}")
+            
             if profile_response.status_code == 200:
                 profile = profile_response.json()
                 display_name = profile.get('displayName', '未知用戶')
+                print(f"獲取到用戶名稱: {display_name}")
+            else:
+                print(f"獲取用戶資料失敗: {profile_response.text}")
         except Exception as e:
-            print(f"獲取用戶資料錯誤: {e}")
-
+            print(f"獲取用戶資料錯誤詳情: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+        
+        # 執行打卡前記錄
+        print(f"準備執行打卡: 用戶={user_id}, 名稱={display_name}, 類型={checkin_type}")
+        
         # 直接執行打卡
-        success, message, timestamp = quick_checkin(user_id, display_name, checkin_type)
+        try:
+            success, message, timestamp = quick_checkin(user_id, display_name, checkin_type)
+            print(f"打卡結果: success={success}, message={message}, time={timestamp}")
+        except Exception as e:
+            print(f"quick_checkin 函數錯誤: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            raise  # 重新拋出異常以便外層捕獲
         
         if success:
+            try:
+                # 嘗試發送通知
+                notification = f"✅ {display_name} 已於 {timestamp} 完成{checkin_type}打卡\n📝 備註: 透過指令快速{checkin_type}打卡"
+                notification_sent = send_checkin_notification(display_name, timestamp, f"快速{checkin_type}打卡", 
+                                     note=f"透過指令快速{checkin_type}打卡")
+                print(f"通知發送結果: {notification_sent}")
+            except Exception as e:
+                print(f"發送通知錯誤: {str(e)}")
+            
             send_reply(reply_token, f"✅ {message}")
         else:
             send_reply(reply_token, f"❌ {message}")
             
     except Exception as e:
         print(f"快速打卡處理錯誤: {str(e)}")
-        send_reply(reply_token, "處理打卡請求時出錯，請稍後再試")
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"錯誤詳情:\n{error_trace}")
+        
+        # 返回更詳細的錯誤信息
+        send_reply(reply_token, f"處理打卡請求時出錯: {str(e)[:30]}...")
 
 # 在 routes/webhook.py 中添加一個測試端點
 @webhook_bp.route('/test-quick-checkin/<user_id>/<name>/<checkin_type>', methods=['GET'])
@@ -449,3 +501,71 @@ def fix_database():
         })
     except Exception as e:
         return jsonify({"error": str(e)})
+
+@webhook_bp.route('/diagnose-quick-checkin', methods=['GET'])
+def diagnose_quick_checkin():
+    from services.checkin_service import quick_checkin
+    
+    try:
+        # 獲取參數
+        user_id = request.args.get('userId', 'test_user_id')
+        name = request.args.get('name', '測試用戶')
+        checkin_type = request.args.get('type', '上班')
+        
+        # 收集診斷信息
+        diagnostics = {
+            "配置檢查": {
+                "LINE_GROUP_ID": Config.LINE_GROUP_ID,
+                "LINE_ACCESS_TOKEN": Config.MESSAGING_CHANNEL_ACCESS_TOKEN[:10] + "..." if Config.MESSAGING_CHANNEL_ACCESS_TOKEN else None,
+                "APP_URL": Config.APP_URL
+            },
+            "數據庫檢查": {}
+        }
+        
+        # 檢查數據庫
+        import sqlite3
+        try:
+            conn = sqlite3.connect('checkin.db')
+            cursor = conn.cursor()
+            
+            # 檢查表結構
+            cursor.execute("PRAGMA table_info(checkin_records)")
+            columns = cursor.fetchall()
+            diagnostics["數據庫檢查"]["表結構"] = columns
+            
+            # 檢查記錄數
+            cursor.execute("SELECT COUNT(*) FROM checkin_records")
+            count = cursor.fetchone()[0]
+            diagnostics["數據庫檢查"]["記錄數"] = count
+            
+            conn.close()
+        except Exception as e:
+            diagnostics["數據庫檢查"]["錯誤"] = str(e)
+        
+        # 嘗試執行快速打卡
+        result = {
+            "準備執行": f"用戶ID: {user_id}, 名稱: {name}, 類型: {checkin_type}"
+        }
+        
+        try:
+            success, message, timestamp = quick_checkin(user_id, name, checkin_type)
+            result["執行結果"] = {
+                "success": success,
+                "message": message,
+                "timestamp": timestamp
+            }
+        except Exception as e:
+            import traceback
+            result["執行錯誤"] = {
+                "message": str(e),
+                "traceback": traceback.format_exc()
+            }
+        
+        # 返回診斷結果
+        return jsonify({
+            "診斷時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "診斷資訊": diagnostics,
+            "快速打卡執行": result
+        })
+    except Exception as e:
+        return jsonify({"診斷錯誤": str(e)})
