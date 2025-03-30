@@ -83,6 +83,48 @@ def webhook():
     
     return 'OK'
 
+@webhook_bp.route('/test-file-system', methods=['GET'])
+def test_file_system():
+    try:
+        # 測試寫入
+        test_file = "test_file.json"
+        test_data = {"test": "data", "timestamp": str(datetime.now())}
+        
+        with open(test_file, 'w') as f:
+            json.dump(test_data, f)
+        
+        # 測試讀取
+        with open(test_file, 'r') as f:
+            read_data = json.load(f)
+        
+        # 測試讀取已有檔案
+        existing_files = []
+        try:
+            with open("checkin_records.json", 'r') as f:
+                existing_files.append({"file": "checkin_records.json", "exists": True})
+        except Exception as e:
+            existing_files.append({"file": "checkin_records.json", "exists": False, "error": str(e)})
+            
+        try:
+            with open("group_messages.json", 'r') as f:
+                existing_files.append({"file": "group_messages.json", "exists": True})
+        except Exception as e:
+            existing_files.append({"file": "group_messages.json", "exists": False, "error": str(e)})
+        
+        return {
+            "success": True,
+            "write_test": "成功",
+            "read_test": read_data,
+            "existing_files": existing_files
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "detail": repr(e)
+        }
+
+
 @webhook_bp.route('/debug-send', methods=['GET'])
 def debug_send():
     try:
