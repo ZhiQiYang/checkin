@@ -365,7 +365,7 @@ def handle_quick_checkin(event, reply_token):
         profile = profile_response.json()
         display_name = profile.get('displayName', '未知用戶')
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        success, message = quick_checkin(user_id, display_name)
+        success, message, timestamp = quick_checkin(user_id, display_name)  # 修改這裡，接收3個返回值
         if success:
             send_checkin_notification(display_name, timestamp, "快速打卡", note="透過指令快速打卡")
             send_reply(reply_token, f"✅ {message}")
