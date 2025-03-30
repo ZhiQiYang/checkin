@@ -28,6 +28,12 @@ def webhook():
             # 先保存可能的群組ID
             if event.get('source', {}).get('type') == 'group':
                 recent_group_id = event['source']['groupId']
+
+            if event.get('source', {}).get('userId'):
+                user_id = event['source'].get('userId')
+                print(f"用戶 ID: {user_id}")  # 這會在伺服器日誌中顯示您的 ID
+                # 或直接回覆給您
+                send_reply(reply_token, f"您的用戶 ID 是: {user_id}")
             
             # 處理文字消息
             if (event.get('type') == 'message' and 
