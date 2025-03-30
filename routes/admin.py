@@ -10,9 +10,10 @@ from services.notification_service import send_line_message_to_group
 
 admin_bp = Blueprint('admin', __name__)
 
-# 管理員ID列表，實際使用時請替換成真實的管理員ID
-ADMIN_IDS = ['U123456789abcdef', 'U987654321abcdef']
+# 定義管理員列表 - 替換為您的 LINE 用戶 ID
+ADMIN_IDS = ['您的LINE用戶ID']  # 例如: 'U1234567890abcdef1234567890abcdef'
 
+# 簡易函數判斷用戶是否為管理員
 def is_admin(user_id):
     """檢查是否為管理員"""
     return user_id in ADMIN_IDS
