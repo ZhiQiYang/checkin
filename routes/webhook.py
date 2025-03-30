@@ -154,7 +154,6 @@ def webhook_response_test():
         result["error"] = str(e)
         return jsonify(result)
 
-
 @webhook_bp.route('/webhook-detailed', methods=['POST'])
 def webhook_detailed():
     body = request.get_data(as_text=True)
@@ -187,7 +186,6 @@ def webhook_detailed():
     except Exception as e:
         response_data["error"] = str(e)
         return jsonify(response_data)
-
 
 @webhook_bp.route('/app-debug', methods=['GET'])
 def app_debug():
@@ -226,7 +224,6 @@ def app_debug():
         status["db_error"] = str(e)
     
     return jsonify(status)
-
 
 @webhook_bp.route('/test-file-system', methods=['GET'])
 def test_file_system():
@@ -269,7 +266,6 @@ def test_file_system():
             "detail": repr(e)
         }
 
-
 @webhook_bp.route('/debug-send', methods=['GET'])
 def debug_send():
     try:
@@ -294,7 +290,6 @@ def view_logs():
         return f"<pre>{logs}</pre>"
     except Exception as e:
         return f"讀取日誌檔案失敗: {str(e)}"
-
 
 @webhook_bp.route('/webhook-test', methods=['POST'])
 def webhook_test():
@@ -355,7 +350,6 @@ def test_message_api():
             "error": str(e),
             "detail": repr(e)
         }
-
 
 @webhook_bp.route('/send-test-message', methods=['GET'])
 def send_test_message():
