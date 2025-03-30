@@ -320,17 +320,27 @@
             </div>
         {% endif %}
 
-        <div class="action-buttons">
-            <a href="javascript:history.back()" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> 返回
-            </a>
-            
-            {% if records %}
-            <a href="/export/checkin-records?userId={{ request.args.get('userId') }}&dateRange={{ days }}" class="excel-btn">
-                <i class="fas fa-file-excel"></i> 匯出Excel
-            </a>
-            {% endif %}
-        </div>
+        <!-- 在 personal_history.html 文件的「action-buttons」div中 -->
+<div class="action-buttons">
+    <a href="javascript:history.back()" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> 返回
+    </a>
+    
+    {% if records %}
+    <!-- 現有的匯出按鈕 -->
+    <a href="/export/checkin-records?userId={{ request.args.get('userId') }}&dateRange={{ days }}" class="excel-btn">
+        <i class="fas fa-file-excel"></i> 匯出Excel
+    </a>
+    
+    <!-- 新增的純文本匯出按鈕 -->
+    <a href="/export-text?userId={{ request.args.get('userId') }}&dateRange={{ days }}&format=json" class="btn btn-primary">
+        <i class="fas fa-file-code"></i> 匯出JSON
+    </a>
+    <a href="/export-text?userId={{ request.args.get('userId') }}&dateRange={{ days }}&format=csv" class="btn btn-success">
+        <i class="fas fa-file-csv"></i> 匯出CSV
+    </a>
+    {% endif %}
+</div>
     </div>
 
     <script>
