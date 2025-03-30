@@ -84,6 +84,60 @@ def webhook():
     
     return 'OK'
 
+@webhook_bp.route('/webhook-response-test', methods=['POST'])
+def webhook_response_test():
+    body = request.get_data(as_text=True)
+    print(f"==== 收到 webhook-response-test 請求 ====")
+    print(f"請求內容: {body}")
+    
+    result = {
+        "received": True,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "events": []
+    }
+    
+    try:
+        data = request.json
+        events = data.get('events', [])
+        
+        for event in events:
+            event_info = {
+                "type": event.get('type'),
+                "source_type": event.get('source', {}).get('type'),
+                "reply_token": event.get('replyToken')
+            }
+            
+            # 如果是文字消息，嘗試直接回覆
+            if (event.get('type') == 'message' and 
+                event.get('message', {}).get('type') == 'text' and 
+                event.get('replyToken')):
+                
+                reply_text = f"收到您的訊息：{event.get('message', {}).get('text')}"
+                try:
+                    # 嘗試回覆
+                    send_reply(event.get('replyToken'), reply_text)
+                    event_info["reply_sent"] = True
+                except Exception as e:
+                    event_info["reply_sent"] = False
+                    event_info["reply_error"] = str(e)
+            
+            result["events"].append(event_info)
+        
+        # 同時嘗試發送群組消息
+        try:
+            group_msg = f"測試群組訊息 - {datetime.now().strftime('%H:%M:%S')}"
+            group_sent = send_line_message_to_group(group_msg)
+            result["group_message_sent"] = group_sent
+        except Exception as e:
+            result["group_message_sent"] = False
+            result["group_message_error"] = str(e)
+        
+        return jsonify(result)
+    except Exception as e:
+        result["error"] = str(e)
+        return jsonify(result)
+
+
 @webhook_bp.route('/webhook-detailed', methods=['POST'])
 def webhook_detailed():
     body = request.get_data(as_text=True)
