@@ -9,6 +9,12 @@ from routes.export import export_bp
 # 添加到 app.py 的 create_app 函數開始處
 from db.update_db import update_database
 update_database()  # 確保數據庫結構正確
+import traceback
+
+@app.errorhandler(500)
+def internal_error(error):
+    app.logger.error('伺服器錯誤: %s\n%s', str(error), traceback.format_exc())
+    return "伺服器內部錯誤，請查看日誌獲取詳情", 500
 
 def create_app(config_class=Config):
     app = Flask(__name__)
