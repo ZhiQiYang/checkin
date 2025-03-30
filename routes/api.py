@@ -3,9 +3,10 @@
 from flask import Blueprint, request, jsonify
 from services.checkin_service import process_checkin as process_checkin_logic
 from services.group_service import save_group_message, get_recent_messages
-from services.notification_service import send_line_message_to_group
+from services.notification_service import send_line_message_to_group, send_line_notification
 from datetime import datetime
 from utils.validator import validate_checkin_input
+from db.crud import get_reminder_setting, update_reminder_setting
 
 api_bp = Blueprint('api', __name__)
 
@@ -51,8 +52,7 @@ def handle_checkin():
         print(f"處理打卡API請求時出錯: {str(e)}")
         return jsonify({'success': False, 'message': f'系統錯誤: {str(e)}'}), 500
 
-# 在 routes/api.py 中添加
-
+# 提醒設置 API
 @api_bp.route('/api/reminder/settings', methods=['GET'])
 def get_reminder_settings():
     user_id = request.args.get('userId')
