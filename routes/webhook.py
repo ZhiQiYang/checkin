@@ -401,7 +401,6 @@ def handle_quick_checkin(event, reply_token, checkin_type="上班"):
         send_reply(reply_token, "處理打卡請求時出錯，請稍後再試")
 
 # 在 routes/webhook.py 中添加一個測試端點
-
 @webhook_bp.route('/test-quick-checkin/<user_id>/<name>/<checkin_type>', methods=['GET'])
 def test_quick_checkin(user_id, name, checkin_type="上班"):
     """測試快速打卡的端點"""
@@ -421,6 +420,7 @@ def test_quick_checkin(user_id, name, checkin_type="上班"):
         result["notification_sent"] = sent
     
     return jsonify(result)
+
 # 添加到 routes/webhook.py
 @webhook_bp.route('/fix-database', methods=['GET'])
 def fix_database():
