@@ -44,5 +44,26 @@ def send_reply(reply_token, text):
     except Exception as e:
         print(f"[通知錯誤] 回覆訊息失敗: {e}")
 
+# 在 services/notification_service.py 中添加
+
+def send_line_notification(user_id, message):
+    """發送LINE個人通知"""
+    try:
+        response = requests.post(
+            'https://api.line.me/v2/bot/message/push',
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'
+            },
+            json={
+                'to': user_id,
+                'messages': [{'type': 'text', 'text': message}]
+            }
+        )
+        return response.status_code == 200
+    except Exception as e:
+        print(f"[通知錯誤] 發送個人通知失敗: {e}")
+        return False
+
 # 添加別名，向後兼容
 send_line_notification = send_line_message_to_group
