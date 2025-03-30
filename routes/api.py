@@ -50,3 +50,54 @@ def handle_checkin():
     except Exception as e:
         print(f"處理打卡API請求時出錯: {str(e)}")
         return jsonify({'success': False, 'message': f'系統錯誤: {str(e)}'}), 500
+
+# 在 routes/api.py 中添加
+
+@api_bp.route('/api/reminder/settings', methods=['GET'])
+def get_reminder_settings():
+    user_id = request.args.get('userId')
+    if not user_id:
+        return jsonify({'success': False, 'message': '缺少用戶ID'}), 400
+    
+    settings = get_reminder_setting(user_id)
+    return jsonify({
+        'success': True,
+        'settings': settings
+    })
+
+@api_bp.route('/api/reminder/settings', methods=['POST'])
+def update_reminder_settings():
+    data = request.json
+    user_id = data.get('userId')
+    
+    if not user_id:
+        return jsonify({'success': False, 'message': '缺少用戶ID'}), 400
+    
+    success = update_reminder_setting(user_id, data)
+    return jsonify({
+        'success': success,
+        'message': '設置已更新' if success else '更新設置失敗'
+    })
+
+@api_bp.route('/api/reminder/test', methods=['POST'])
+def test_reminder():
+    """測試發送提醒"""
+    data = request.json
+    user_id = data.get('userId')
+    name = data.get('name', '用戶')
+    reminder_type = data.get('type', 'morning')
+    
+    if not user_id:
+        return jsonify({'success': False, 'message': '缺少用戶ID'}), 400
+    
+    if reminder_type == 'morning':
+        message = f"⏰ 測試 - {name}，早安！您今天還沒有上班打卡，請記得打卡。"
+    else:
+        message = f"⏰ 測試 - {name}，下班時間到了！您今天還沒有下班打卡，請記得打卡。"
+    
+    success = send_line_notification(user_id, message)
+    
+    return jsonify({
+        'success': success,
+        'message': '測試提醒已發送' if success else '發送測試提醒失敗'
+    })
