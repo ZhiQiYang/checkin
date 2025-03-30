@@ -11,8 +11,6 @@ def create_app(config_class=Config):
     
     # 檢查並創建必要的檔案
     from utils.file_helper import ensure_file_exists
-    ensure_file_exists("checkin_records.json", {"records": []})
-    ensure_file_exists("group_messages.json", {"messages": []})
     print("檔案檢查完成")
     
     # 初始化資料庫
