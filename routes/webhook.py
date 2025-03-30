@@ -99,6 +99,16 @@ def debug_send():
     except Exception as e:
         return jsonify({"error": str(e)})
 
+@webhook_bp.route('/view-logs', methods=['GET'])
+def view_logs():
+    try:
+        with open('webhook_logs.txt', 'r', encoding='utf-8') as f:
+            logs = f.read()
+        return f"<pre>{logs}</pre>"
+    except Exception as e:
+        return f"讀取日誌檔案失敗: {str(e)}"
+
+
 @webhook_bp.route('/webhook-test', methods=['POST'])
 def webhook_test():
     print("正在處理 webhook 測試請求")
