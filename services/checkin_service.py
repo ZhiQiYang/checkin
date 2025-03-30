@@ -15,8 +15,11 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
 
 def quick_checkin(user_id, name, checkin_type="上班"):
     """快速打卡功能"""
-    return process_checkin(user_id, name, f"快速{checkin_type}打卡", 
-                           note=f"通過指令快速{checkin_type}打卡", checkin_type=checkin_type)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    success, message = save_checkin(user_id, name, f"快速{checkin_type}打卡", 
+                                    note=f"通過指令快速{checkin_type}打卡", 
+                                    checkin_type=checkin_type)
+    return success, message, timestamp
 
 # 向後兼容的別名
 save_checkin_record = process_checkin
