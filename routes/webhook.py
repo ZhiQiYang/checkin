@@ -17,51 +17,51 @@ def webhook():
     global recent_group_id
     body = request.get_data(as_text=True)
     print(f"==== 收到 webhook 請求 ====")
-    print(f"請求內容: {body}")
-    
-    # 寫入日誌文件
-    try:
-        with open('webhook_logs.txt', 'a', encoding='utf-8') as f:
-            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 收到請求: {body}\n")
-    except Exception as e:
-        print(f"寫入日誌文件失敗: {e}")
     
     try:
-        events = request.json.get('events', [])
-        print(f"解析到 {len(events)} 個事件")
+        data = request.json
+        events = data.get('events', [])
         
         for event in events:
+            # 先保存可能的群組ID
             if event.get('source', {}).get('type') == 'group':
                 recent_group_id = event['source']['groupId']
-
-            if event.get('type') == 'message' and event.get('message', {}).get('type') == 'text':
+            
+            # 處理文字消息
+            if (event.get('type') == 'message' and 
+                event.get('message', {}).get('type') == 'text' and 
+                event.get('replyToken')):
+                
                 text = event.get('message', {}).get('text')
                 reply_token = event.get('replyToken')
                 source_type = event.get('source', {}).get('type')
                 
-                print(f"收到文字訊息: {text}, 回覆令牌: {reply_token}")
-
+                # 始終發送一個基本回覆
+                default_reply = f"收到您的訊息：{text}"
+                
+                # 根據消息內容執行不同的業務邏輯
                 if text.startswith('!'):
                     command = text[1:].lower()
-                    print(f"檢測到指令: {command}")
-
                     if command == '快速打卡':
-                        print("處理快速打卡指令")
                         handle_quick_checkin(event, reply_token)
-                        print("快速打卡處理完成")
-
                     elif command == '下載報表':
                         download_url = f"{Config.APP_URL}/export-excel"
                         send_reply(reply_token, f"📄 點擊以下連結下載打卡報表：\n{download_url}")
-
-                elif source_type == 'user':
-                    if text in ['打卡', '打卡連結']:
-                        liff_url = f"https://liff.line.me/{Config.LIFF_ID}"
-                        send_reply(reply_token, f"請點擊以下連結進行打卡：\n{liff_url}")
+                    else:
+                        # 其他命令使用默認回覆
+                        send_reply(reply_token, default_reply)
+                elif source_type == 'user' and text in ['打卡', '打卡連結']:
+                    liff_url = f"https://liff.line.me/{Config.LIFF_ID}"
+                    send_reply(reply_token, f"請點擊以下連結進行打卡：\n{liff_url}")
+                else:
+                    # 不符合特殊條件的消息使用默認回覆
+                    send_reply(reply_token, default_reply)
                 
-                elif source_type == 'group' and event['source']['groupId'] == Config.LINE_GROUP_ID:
+                # 處理群組消息存儲
+                if source_type == 'group' and event['source']['groupId'] == Config.LINE_GROUP_ID:
                     user_id = event['source'].get('userId')
                     if user_id:
+                        # 獲取用戶資料並保存群組消息
                         profile_response = requests.get(
                             f'https://api.line.me/v2/bot/profile/{user_id}',
                             headers={
@@ -73,16 +73,12 @@ def webhook():
                             user_name = profile.get('displayName', '未知用戶')
                             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             save_group_message(user_id, user_name, text, timestamp)
+        
+        return 'OK'
     except Exception as e:
         error_msg = f"處理 webhook 時出錯: {str(e)}"
         print(error_msg)
-        try:
-            with open('webhook_logs.txt', 'a', encoding='utf-8') as f:
-                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 錯誤: {error_msg}\n")
-        except:
-            pass
-    
-    return 'OK'
+        return 'OK'
 
 @webhook_bp.route('/webhook-response-test', methods=['POST'])
 def webhook_response_test():
