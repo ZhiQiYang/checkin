@@ -991,10 +991,7 @@ def save_checkin(user_id, name, location, note=None, latitude=None, longitude=No
         time_str = now.strftime('%H:%M:%S')
 
         # 插入新紀錄，不使用 checkin_type 欄位
-        c.execute('''
-            INSERT INTO checkin_records (user_id, name, location, note, latitude, longitude, date, time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (user_id, name, location, note, latitude, longitude, today, time_str))
+        
 
         conn.commit()
         conn.close()
