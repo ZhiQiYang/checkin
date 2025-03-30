@@ -1,0 +1,185 @@
+<!-- templates/logs.html -->
+{% extends "base.html" %}
+
+{% block title %}系統日誌{% endblock %}
+
+{% block extra_css %}
+<style>
+    .log-container {
+        background-color: #1e1e1e;
+        color: #dcdcdc;
+        border-radius: 5px;
+        padding: 15px;
+        font-family: Consolas, Monaco, 'Courier New', monospace;
+        height: 70vh;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        font-size: 0.9em;
+        line-height: 1.5;
+    }
+    .log-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    .log-filter {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #f5f5f5;
+        border-radius: 5px;
+    }
+    .filter-input {
+        width: 100%;
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+    }
+    .log-info {
+        color: #75bfff;
+    }
+    .log-warning {
+        color: #ffcc66;
+    }
+    .log-error {
+        color: #ff6b6b;
+    }
+    .timestamp {
+        color: #999;
+    }
+    .nav-buttons {
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="log-header">
+        <h1 class="mb-0">📋 系統日誌</h1>
+        <div>
+            <button id="refresh-btn" class="btn btn-primary">刷新</button>
+            <button id="download-btn" class="btn btn-secondary ml-2">下載日誌</button>
+        </div>
+    </div>
+    
+    <div class="log-filter">
+        <input type="text" id="log-search" class="filter-input" placeholder="輸入關鍵字過濾日誌...">
+        <div class="mt-2">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="show-info" checked>
+                <label class="form-check-label" for="show-info">顯示信息</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="show-warnings" checked>
+                <label class="form-check-label" for="show-warnings">顯示警告</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="show-errors" checked>
+                <label class="form-check-label" for="show-errors">顯示錯誤</label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body p-0">
+            <div id="log-content" class="log-container">{{ log_content }}</div>
+        </div>
+    </div>
+    
+    <div class="text-muted mt-2">
+        日誌文件: {{ log_file }} | 生成時間: {{ generated_time }}
+    </div>
+    
+    <div class="nav-buttons">
+        <a href="/admin?userId={{ user_id }}" class="btn btn-secondary">返回管理面板</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 日誌過濾功能
+    document.getElementById('log-search').addEventListener('input', filterLogs);
+    document.getElementById('show-info').addEventListener('change', filterLogs);
+    document.getElementById('show-warnings').addEventListener('change', filterLogs);
+    document.getElementById('show-errors').addEventListener('change', filterLogs);
+    
+    function filterLogs() {
+        const searchText = document.getElementById('log-search').value.toLowerCase();
+        const showInfo = document.getElementById('show-info').checked;
+        const showWarnings = document.getElementById('show-warnings').checked;
+        const showErrors = document.getElementById('show-errors').checked;
+        
+        const logContent = document.getElementById('log-content');
+        const logLines = logContent.innerText.split('\n');
+        let filteredContent = '';
+        
+        for (const line of logLines) {
+            const lowerLine = line.toLowerCase();
+            
+            // 檢查日誌類型
+            const isInfo = lowerLine.includes(' info:') && !lowerLine.includes(' warning:') && !lowerLine.includes(' error:');
+            const isWarning = lowerLine.includes(' warning:');
+            const isError = lowerLine.includes(' error:');
+            
+            // 根據過濾器設置決定是否顯示
+            const showByType = (isInfo && showInfo) || 
+                              (isWarning && showWarnings) || 
+                              (isError && showErrors) ||
+                              (!isInfo && !isWarning && !isError); // 其他類型默認顯示
+            
+            // 根據搜索文本過濾
+            const matchesSearch = !searchText || lowerLine.includes(searchText);
+            
+            if (showByType && matchesSearch) {
+                // 添加顏色樣式
+                let styledLine = line;
+                if (isInfo) {
+                    styledLine = `<span class="log-info">${line}</span>`;
+                } else if (isWarning) {
+                    styledLine = `<span class="log-warning">${line}</span>`;
+                } else if (isError) {
+                    styledLine = `<span class="log-error">${line}</span>`;
+                }
+                
+                // 為時間戳添加樣式
+                styledLine = styledLine.replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g, 
+                                           '<span class="timestamp">$&</span>');
+                
+                filteredContent += styledLine + '\n';
+            }
+        }
+        
+        logContent.innerHTML = filteredContent;
+    }
+    
+    // 頁面加載時處理日誌樣式
+    document.addEventListener('DOMContentLoaded', function() {
+        filterLogs();
+    });
+    
+    // 刷新按鈕
+    document.getElementById('refresh-btn').addEventListener('click', function() {
+        window.location.reload();
+    });
+    
+    // 下載日誌按鈕
+    document.getElementById('download-btn').addEventListener('click', function() {
+        const logContent = document.getElementById('log-content').innerText;
+        const blob = new Blob([logContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'system_log_{{ generated_time|replace(":", "-")|replace(" ", "_") }}.txt';
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(function() {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 0);
+    });
+</script>
+{% endblock %}
