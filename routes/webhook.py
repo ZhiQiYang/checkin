@@ -403,3 +403,25 @@ def handle_quick_checkin(event, reply_token, checkin_type="上班"):
         error_msg = f"快速打卡處理時出錯: {str(e)}"
         print(error_msg)
         send_reply(reply_token, "處理打卡請求時出錯，請稍後再試")
+
+# 在 routes/webhook.py 中添加一個測試端點
+
+@webhook_bp.route('/test-quick-checkin/<user_id>/<name>/<checkin_type>', methods=['GET'])
+def test_quick_checkin(user_id, name, checkin_type="上班"):
+    """測試快速打卡的端點"""
+    success, message, timestamp = quick_checkin(user_id, name, checkin_type)
+    
+    result = {
+        "success": success,
+        "message": message,
+        "timestamp": timestamp,
+        "note": f"通過指令快速{checkin_type}打卡"
+    }
+    
+    # 如果成功，也發送群組通知
+    if success:
+        notification = f"✅ {name} 已於 {timestamp} 完成{checkin_type}打卡\n📝 備註: 透過指令快速{checkin_type}打卡"
+        sent = send_line_message_to_group(notification)
+        result["notification_sent"] = sent
+    
+    return jsonify(result)
