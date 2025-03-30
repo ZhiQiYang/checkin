@@ -25,6 +25,7 @@ def create_app(config_class=Config):
     from routes.group import group_bp
     from routes.views import views_bp
     
+    app.register_blueprint(export_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(webhook_bp)
     app.register_blueprint(rich_menu_bp)
