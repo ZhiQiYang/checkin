@@ -6,6 +6,7 @@ from utils.ping_thread import start_keep_alive_thread
 from utils.logger import setup_logger
 from routes.export import export_bp
 import traceback
+from services.scheduler_service import reminder_scheduler
 
 # 從 update_db.py 導入更新函數
 from db.update_db import update_database
@@ -49,6 +50,9 @@ def create_app(config_class=Config):
     def ping():
         from datetime import datetime
         return {"status": "alive", "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, 200
+    
+    # 初始化提醒系統
+    reminder_scheduler.start()
     
     # 調試端點
     @app.route('/debug-error')
