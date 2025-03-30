@@ -4,6 +4,7 @@ from config import Config
 from db import init_db
 from utils.ping_thread import start_keep_alive_thread
 from utils.logger import setup_logger
+from routes.export import export_bp
 
 def create_app(config_class=Config):
     app = Flask(__name__)
