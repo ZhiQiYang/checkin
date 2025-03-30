@@ -19,20 +19,19 @@ def create_rich_menu():
                 "action": {"type": "uri", "uri": f"https://liff.line.me/{Config.GROUP_LIFF_ID}"}
             },
             {
-                "bounds": {"x": 0, "y": 843, "width": 833, "height": 843},
+                "bounds": {"x": 0, "y": 843, "width": 625, "height": 843},
                 "action": {"type": "message", "text": "!打卡報表"}
             },
             {
-                "bounds": {"x": 833, "y": 843, "width": 833, "height": 843},
+                "bounds": {"x": 625, "y": 843, "width": 625, "height": 843},
                 "action": {"type": "message", "text": "!幫助"}
             },
             {
-                "bounds": {"x": 1666, "y": 843, "width": 834, "height": 843},
+                "bounds": {"x": 1250, "y": 843, "width": 625, "height": 843},
                 "action": {"type": "message", "text": "!快速打卡"}
-            }
-            # 添加提醒設置項
+            },
             {
-                "bounds": {"x": 1666, "y": 843, "width": 834, "height": 843},
+                "bounds": {"x": 1875, "y": 843, "width": 625, "height": 843},
                 "action": {"type": "uri", "uri": f"{Config.APP_URL}/reminder-settings"}
             }
         ]
