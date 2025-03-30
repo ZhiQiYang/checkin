@@ -44,9 +44,12 @@ def webhook():
                 # 根據消息內容執行不同的業務邏輯
                 if text.startswith('!'):
                     command = text[1:].lower()
+                    print(f"收到命令: {command}")  # 添加日誌
+                    
                     # 打卡命令處理
                     if command == '快速打卡' or command == '上班打卡':
                         handle_quick_checkin(event, reply_token, "上班")
+                        return 'OK'  # 添加返回，避免繼續執行
                     elif command == '下班打卡':
                         handle_quick_checkin(event, reply_token, "下班")
                     elif command == '打卡報表':
