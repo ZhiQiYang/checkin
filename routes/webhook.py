@@ -108,7 +108,7 @@ def webhook_response_test():
     print(f"請求內容: {body}")
     
     result = {
-        "received": True,
+        " MAMreceived": True,
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "events": []
     }
@@ -601,8 +601,10 @@ def system_diagnostic():
     # 2. 檢查數據庫
     try:
         if os.path.exists(Config.DB_PATH):
-            diagnostic["數據庫"]["文件存在"] = True
-            diagnostic["數據庫"]["文件大小"] = f"{os.path.getsize(Config.DB_PATH)} 字節"
+            diagnostic["數據庫"] = {
+                "文件存在": True,
+                "文件大小": f"{os.path.getsize(Config.DB_PATH)} 字節"
+            }
             
             conn = sqlite3.connect(Config.DB_PATH)
             c = conn.cursor()
@@ -846,6 +848,7 @@ def function_test():
         }
     
     return jsonify(result)
+
 # 在 routes/webhook.py 中添加這個端點
 @webhook_bp.route('/emergency-db-fix', methods=['GET'])
 def emergency_db_fix():
