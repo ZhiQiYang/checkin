@@ -153,6 +153,23 @@ def webhook_debug():
     else:
         return "webhook 調試端點正常運行"
 
+@webhook_bp.route('/test-message-api', methods=['GET'])
+def test_message_api():
+    try:
+        result = send_line_message_to_group("這是一條測試訊息")
+        return {
+            "success": result,
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "message": "測試發送結果"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "detail": repr(e)
+        }
+
+
 @webhook_bp.route('/send-test-message', methods=['GET'])
 def send_test_message():
     try:
