@@ -29,7 +29,8 @@ def webhook():
             if event.get('source', {}).get('type') == 'group':
                 recent_group_id = event['source']['groupId']
 
-           if (event.get('type') == 'message' and 
+            # 新增查詢ID功能
+            if (event.get('type') == 'message' and 
                 event.get('message', {}).get('type') == 'text' and 
                 event.get('replyToken') and
                 event.get('source', {}).get('userId')):    
@@ -37,13 +38,13 @@ def webhook():
                 reply_token = event.get('replyToken')
                 user_id = event['source'].get('userId')
     
-    # 顯示用戶 ID 在伺服器日誌
-    print(f"用戶 ID: {user_id}")
-    
-    # 如果消息內容是 "查詢ID"，回覆用戶 ID
-    if text == "查詢ID":
-        send_reply(reply_token, f"您的用戶 ID 是: {user_id}")
-        return 'OK'  # 處理完畢，跳過其他邏輯
+                # 顯示用戶 ID 在伺服器日誌
+                print(f"用戶 ID: {user_id}")
+                
+                # 如果消息內容是 "查詢ID"，回覆用戶 ID
+                if text == "查詢ID":
+                    send_reply(reply_token, f"您的用戶 ID 是: {user_id}")
+                    return 'OK'  # 處理完畢，跳過其他邏輯
             
             # 處理文字消息
             if (event.get('type') == 'message' and 
@@ -57,7 +58,7 @@ def webhook():
                 # 始終發送一個基本回覆
                 default_reply = f"收到您的訊息：{text}"
                 
-               # 根據消息內容執行不同的業務邏輯
+                # 根據消息內容執行不同的業務邏輯
                 if text.startswith('!'):
                     command = text[1:].lower()
                     print(f"收到命令: {command}")  # 添加日誌
@@ -157,11 +158,11 @@ def webhook():
                         except Exception as e:
                             send_reply(reply_token, f"❌ 獲取系統狀態時出錯: {str(e)[:30]}...")
                     elif command == '管理指令':
-    # 檢查是否為管理員
-    user_id = event['source'].get('userId')
-    from routes.admin import ADMIN_IDS  # 導入管理員列表
-    
-    if user_id in ADMIN_IDS:
+                        # 檢查是否為管理員
+                        user_id = event['source'].get('userId')
+                        from routes.admin import ADMIN_IDS  # 導入管理員列表
+                        
+                        if user_id in ADMIN_IDS:
                             admin_help = (
                                 "🔧 管理員指令列表：\n"
                                 "!重置菜單 - 重置LINE Rich Menu\n"
@@ -229,6 +230,8 @@ def webhook():
         error_msg = f"處理 webhook 時出錯: {str(e)}"
         print(error_msg)
         return 'OK'
+
+# ... (以下其他函數保持不變，請參考上面的完整代碼)
 
 @webhook_bp.route('/webhook-response-test', methods=['POST'])
 def webhook_response_test():
