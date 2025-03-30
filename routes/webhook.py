@@ -362,7 +362,7 @@ def send_test_message():
     except Exception as e:
         return jsonify({"error": str(e)})
 
-def handle_quick_checkin(event, reply_token):
+def handle_quick_checkin(event, reply_token, checkin_type="上班"):
     user_id = event['source'].get('userId')
     if not user_id:
         send_reply(reply_token, "無法獲取用戶信息，請使用 LIFF 頁面打卡")
@@ -375,10 +375,10 @@ def handle_quick_checkin(event, reply_token):
     if profile_response.status_code == 200:
         profile = profile_response.json()
         display_name = profile.get('displayName', '未知用戶')
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        success, message, timestamp = quick_checkin(user_id, display_name)  # 修改這裡，接收3個返回值
+        success, message, timestamp = quick_checkin(user_id, display_name, checkin_type)
         if success:
-            send_checkin_notification(display_name, timestamp, "快速打卡", note="透過指令快速打卡")
+            send_checkin_notification(display_name, timestamp, f"快速{checkin_type}打卡", 
+                                      note=f"透過指令快速{checkin_type}打卡")
             send_reply(reply_token, f"✅ {message}")
         else:
             send_reply(reply_token, f"❌ {message}")
