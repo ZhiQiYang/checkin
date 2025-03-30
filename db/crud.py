@@ -307,3 +307,23 @@ def save_or_update_user(user_id, name, display_name=None):
     
     conn.commit()
     conn.close()
+
+def process_checkin(user_id, name, location, note=None, latitude=None, longitude=None, checkin_type="上班"):
+    """處理打卡，保存打卡記錄到數據庫"""
+    try:
+        # 保存用戶信息
+        save_or_update_user(user_id, name)
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        today = datetime.now().strftime("%Y-%m-%d")
+        time_str = datetime.now().strftime("%H:%M:%S")
+        
+        # 簡化代碼：直接調用 save_checkin
+        success, message = save_checkin(user_id, name, location, note, latitude, longitude, checkin_type)
+        
+        print(f"打卡結果: {success}, {message}, {timestamp}")
+        
+        return success, message, timestamp
+    except Exception as e:
+        print(f"打卡過程錯誤: {str(e)}")
+        return False, f"處理過程出錯: {str(e)}", datetime.now().strftime("%Y-%m-%d %H:%M:%S")
