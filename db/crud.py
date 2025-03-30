@@ -8,6 +8,7 @@ DB_PATH = 'checkin.db'
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    
     # 建立打卡紀錄表格
     c.execute('''
         CREATE TABLE IF NOT EXISTS checkin_records (
@@ -32,6 +33,16 @@ def init_db():
             user_name TEXT NOT NULL,
             message TEXT,
             timestamp TEXT NOT NULL
+        )
+    ''')
+    
+    # 建立用戶表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            display_name TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
