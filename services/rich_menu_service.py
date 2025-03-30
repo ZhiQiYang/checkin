@@ -30,6 +30,11 @@ def create_rich_menu():
                 "bounds": {"x": 1666, "y": 843, "width": 834, "height": 843},
                 "action": {"type": "message", "text": "!快速打卡"}
             }
+            # 添加提醒設置項
+            {
+                "bounds": {"x": 1666, "y": 843, "width": 834, "height": 843},
+                "action": {"type": "uri", "uri": f"{Config.APP_URL}/reminder-settings"}
+            }
         ]
     }
 
