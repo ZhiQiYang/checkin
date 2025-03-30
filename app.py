@@ -1,20 +1,17 @@
 # app.py
-from flask import Flask
+from flask import Flask, jsonify
 from config import Config
 from db import init_db
 from utils.ping_thread import start_keep_alive_thread
 from utils.logger import setup_logger
 from routes.export import export_bp
-
-# 添加到 app.py 的 create_app 函數開始處
-from db.update_db import update_database
-update_database()  # 確保數據庫結構正確
 import traceback
 
-@app.errorhandler(500)
-def internal_error(error):
-    app.logger.error('伺服器錯誤: %s\n%s', str(error), traceback.format_exc())
-    return "伺服器內部錯誤，請查看日誌獲取詳情", 500
+# 從 update_db.py 導入更新函數
+from db.update_db import update_database
+
+# 先執行數據庫更新
+update_database()  # 確保數據庫結構正確
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -47,43 +44,45 @@ def create_app(config_class=Config):
     @app.route('/')
     def index():
         return "✅ 打卡系統運行中！"
-
+    
     @app.route('/ping')
     def ping():
         from datetime import datetime
         return {"status": "alive", "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, 200
     
+    # 調試端點
+    @app.route('/debug-error')
+    def debug_error():
+        try:
+            # 嘗試連接數據庫並查詢
+            import sqlite3
+            conn = sqlite3.connect(Config.DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = c.fetchall()
+            
+            result = {"tables": [t[0] for t in tables]}
+            
+            # 檢查表結構
+            for table in result["tables"]:
+                c.execute(f"PRAGMA table_info({table})")
+                columns = c.fetchall()
+                result[f"{table}_columns"] = [col[1] for col in columns]
+            
+            conn.close()
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({"error": str(e), "traceback": traceback.format_exc()})
+    
     # 錯誤處理
     @app.errorhandler(404)
     def not_found_error(error):
         return "頁面不存在", 404
-
-    @app.route('/debug-error')
-    def debug_error():
-    try:
-        # 嘗試連接數據庫並查詢
-        import sqlite3
-        conn = sqlite3.connect(Config.DB_PATH)
-        c = conn.cursor()
-        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = c.fetchall()
-        
-        result = {"tables": [t[0] for t in tables]}
-        
-        # 檢查表結構
-        for table in result["tables"]:
-            c.execute(f"PRAGMA table_info({table})")
-            columns = c.fetchall()
-            result[f"{table}_columns"] = [col[1] for col in columns]
-        
-        conn.close()
-        return result
-    except Exception as e:
-        return {"error": str(e), "traceback": traceback.format_exc()}
+    
     @app.errorhandler(500)
     def internal_error(error):
-        app.logger.error('服務器錯誤: %s', str(error))
-        return "伺服器內部錯誤", 500
+        app.logger.error('服務器錯誤: %s\n%s', str(error), traceback.format_exc())
+        return "伺服器內部錯誤，請查看日誌獲取詳情", 500
     
     # 啟動保活線程
     if not app.debug:
