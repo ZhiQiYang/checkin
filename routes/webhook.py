@@ -366,42 +366,38 @@ def send_test_message():
     except Exception as e:
         return jsonify({"error": str(e)})
 
+# 更新 routes/webhook.py 中的 handle_quick_checkin 函數
 def handle_quick_checkin(event, reply_token, checkin_type="上班"):
-    print(f"執行快速打卡處理，類型: {checkin_type}")  # 添加日誌
-    user_id = event['source'].get('userId')
-    if not user_id:
-        send_reply(reply_token, "無法獲取用戶信息，請使用 LIFF 頁面打卡")
-        return
-
-    # 獲取用戶資料
     try:
-        profile_response = requests.get(
-            f'https://api.line.me/v2/bot/profile/{user_id}',
-            headers={'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'}
-        )
+        print(f"執行快速打卡: {checkin_type}")
+        user_id = event['source'].get('userId')
+        if not user_id:
+            send_reply(reply_token, "無法獲取用戶信息，請使用 LIFF 頁面打卡")
+            return
+
+        # 使用靜態用戶名進行測試
+        display_name = "用戶" 
+        try:
+            profile_response = requests.get(
+                f'https://api.line.me/v2/bot/profile/{user_id}',
+                headers={'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'}
+            )
+            if profile_response.status_code == 200:
+                profile = profile_response.json()
+                display_name = profile.get('displayName', '未知用戶')
+        except Exception as e:
+            print(f"獲取用戶資料錯誤: {e}")
+
+        # 直接執行打卡
+        success, message, timestamp = quick_checkin(user_id, display_name, checkin_type)
         
-        print(f"獲取用戶資料回應: {profile_response.status_code}")  # 添加日誌
-        
-        if profile_response.status_code == 200:
-            profile = profile_response.json()
-            display_name = profile.get('displayName', '未知用戶')
-            
-            # 執行快速打卡
-            print(f"為用戶 {display_name} 執行{checkin_type}打卡")  # 添加日誌
-            success, message, timestamp = quick_checkin(user_id, display_name, checkin_type)
-            
-            if success:
-                notification = f"✅ {display_name} 已於 {timestamp} 完成{checkin_type}打卡\n📝 備註: 透過指令快速{checkin_type}打卡"
-                send_checkin_notification(display_name, timestamp, f"快速{checkin_type}打卡", 
-                                        note=f"透過指令快速{checkin_type}打卡")
-                send_reply(reply_token, f"✅ {message}")
-            else:
-                send_reply(reply_token, f"❌ {message}")
+        if success:
+            send_reply(reply_token, f"✅ {message}")
         else:
-            send_reply(reply_token, f"無法取得使用者資料，錯誤碼: {profile_response.status_code}")
+            send_reply(reply_token, f"❌ {message}")
+            
     except Exception as e:
-        error_msg = f"快速打卡處理時出錯: {str(e)}"
-        print(error_msg)
+        print(f"快速打卡處理錯誤: {str(e)}")
         send_reply(reply_token, "處理打卡請求時出錯，請稍後再試")
 
 # 在 routes/webhook.py 中添加一個測試端點
@@ -425,3 +421,31 @@ def test_quick_checkin(user_id, name, checkin_type="上班"):
         result["notification_sent"] = sent
     
     return jsonify(result)
+# 添加到 routes/webhook.py
+@webhook_bp.route('/fix-database', methods=['GET'])
+def fix_database():
+    try:
+        from db.update_db import update_database
+        result = update_database()
+        
+        # 創建測試記錄
+        from services.checkin_service import process_checkin
+        user_id = request.args.get('userId', 'test_user')
+        success, message, timestamp = process_checkin(
+            user_id, 
+            "測試用戶", 
+            "系統測試", 
+            note="數據庫修復測試", 
+            checkin_type="上班"
+        )
+        
+        return jsonify({
+            "db_update": "完成",
+            "test_record": {
+                "success": success,
+                "message": message,
+                "timestamp": timestamp
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
