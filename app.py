@@ -32,6 +32,7 @@ def create_app(config_class=Config):
     from routes.history import history_bp
     from routes.group import group_bp
     from routes.views import views_bp
+    from routes.admin import admin_bp
     
     app.register_blueprint(export_bp)
     app.register_blueprint(api_bp)
@@ -40,6 +41,7 @@ def create_app(config_class=Config):
     app.register_blueprint(history_bp)
     app.register_blueprint(group_bp)
     app.register_blueprint(views_bp)
+    app.register_blueprint(admin_bp)
     
     # 預設路由
     @app.route('/')
