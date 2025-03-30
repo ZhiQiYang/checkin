@@ -84,6 +84,40 @@ def webhook():
     
     return 'OK'
 
+@webhook_bp.route('/webhook-detailed', methods=['POST'])
+def webhook_detailed():
+    body = request.get_data(as_text=True)
+    print(f"==== 收到 webhook-detailed 請求 ====")
+    
+    response_data = {
+        "received": True,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "body_length": len(body),
+        "events_count": 0,
+        "events_details": []
+    }
+    
+    try:
+        data = request.json
+        events = data.get('events', [])
+        response_data["events_count"] = len(events)
+        
+        for event in events:
+            event_details = {
+                "type": event.get('type'),
+                "source_type": event.get('source', {}).get('type'),
+                "has_reply_token": bool(event.get('replyToken')),
+                "message_type": event.get('message', {}).get('type') if event.get('type') == 'message' else None,
+                "text": event.get('message', {}).get('text') if event.get('type') == 'message' and event.get('message', {}).get('type') == 'text' else None
+            }
+            response_data["events_details"].append(event_details)
+            
+        return jsonify(response_data)
+    except Exception as e:
+        response_data["error"] = str(e)
+        return jsonify(response_data)
+
+
 @webhook_bp.route('/app-debug', methods=['GET'])
 def app_debug():
     import sqlite3
