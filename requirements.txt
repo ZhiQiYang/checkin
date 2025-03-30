@@ -7,4 +7,4 @@ openpyxl
 xlsxwriter
 line-bot-sdk
 pillow
-
+psutil
