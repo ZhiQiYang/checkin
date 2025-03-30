@@ -2,14 +2,14 @@
 from datetime import datetime
 from db.crud import save_checkin
 
-def process_checkin(user_id, name, location, note=None, latitude=None, longitude=None):
+def process_checkin(user_id, name, location, note=None, latitude=None, longitude=None, checkin_type="上班"):
     """處理打卡，保存打卡記錄到數據庫"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     today = datetime.now().strftime("%Y-%m-%d")
     time_str = datetime.now().strftime("%H:%M:%S")
     
-    # 使用資料庫函數保存打卡記錄
-    success, message = save_checkin(user_id, name, location, note, latitude, longitude)
+    # 檢查今天是否已有相同類型的打卡記錄
+    success, message = save_checkin(user_id, name, location, note, latitude, longitude, checkin_type)
     
     return success, message, timestamp
 
