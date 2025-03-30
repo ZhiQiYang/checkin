@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>匯出打卡記錄</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f7f7f7;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .export-form {
+            margin-top: 20px;
+        }
+        .form-footer {
+            margin-top: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">匯出打卡記錄</h1>
+        
+        <div class="export-form">
+            <form id="exportForm" action="/export/checkin-records" method="get">
+                <input type="hidden" name="userId" value="{{ user_id }}">
+                
+                <div class="form-group">
+                    <label for="dateRange">選擇時間範圍：</label>
+                    <select id="dateRange" name="dateRange" class="form-control">
+                        <option value="7">最近一週</option>
+                        <option value="30">最近一個月</option>
+                        <option value="90">最近三個月</option>
+                        <option value="all">所有紀錄</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">匯出 Excel</button>
+            </form>
+        </div>
+        
+        <div class="form-footer">
+            <a href="javascript:history.back()" class="btn btn-secondary">返回</a>
+        </div>
+    </div>
+</body>
+</html>
