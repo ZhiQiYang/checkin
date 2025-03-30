@@ -5,17 +5,11 @@ import os
 import sqlite3
 from config import Config
 
+# 修改 services/export_service.py
+
 def export_checkin_records_to_excel(user_id=None, date_from=None, date_to=None):
     """
-    匯出打卡記錄到 Excel 檔案
-    
-    參數:
-    - user_id: 指定用戶的ID，如果為None則匯出所有用戶
-    - date_from: 開始日期，格式 YYYY-MM-DD
-    - date_to: 結束日期，格式 YYYY-MM-DD
-    
-    返回:
-    - 生成的Excel檔案路徑
+    匯出打卡記錄到 Excel 缓冲區
     """
     conn = sqlite3.connect(Config.DB_PATH)
     
@@ -48,24 +42,20 @@ def export_checkin_records_to_excel(user_id=None, date_from=None, date_to=None):
     if df.empty:
         return None
     
-    # 確保存儲目錄存在
-    if not os.path.exists('exports'):
-        os.makedirs('exports')
+    # 使用BytesIO而不是文件
+    output = io.BytesIO()
     
-    # 生成檔案名稱
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"exports/checkin_records_{timestamp}.xlsx"
-    
-    # 使用上下文管理器寫入Excel (修改這部分)
-    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+    # 寫入Excel到內存緩衝區
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='打卡記錄')
+        
+        # 自動調整列寬
+        worksheet = writer.sheets['打卡記錄']
+        for i, col in enumerate(df.columns):
+            max_length = max(df[col].astype(str).map(len).max(), len(col)) + 2
+            worksheet.column_dimensions[chr(65 + i)].width = max_length
     
-    # 自動調整列寬
-    worksheet = writer.sheets['打卡記錄']
-    for i, col in enumerate(df.columns):
-        max_length = max(df[col].astype(str).map(len).max(), len(col)) + 2
-        worksheet.column_dimensions[chr(65 + i)].width = max_length
+    # 將指針移動到開頭
+    output.seek(0)
     
-    writer.close()
-    
-    return filename
+    return output
