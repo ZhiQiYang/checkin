@@ -6,6 +6,10 @@ from utils.ping_thread import start_keep_alive_thread
 from utils.logger import setup_logger
 from routes.export import export_bp
 
+# 添加到 app.py 的 create_app 函數開始處
+from db.update_db import update_database
+update_database()  # 確保數據庫結構正確
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
