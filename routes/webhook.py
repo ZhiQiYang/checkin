@@ -41,7 +41,7 @@ def webhook():
                 # 始終發送一個基本回覆
                 default_reply = f"收到您的訊息：{text}"
                 
-                # 根據消息內容執行不同的業務邏輯
+               # 根據消息內容執行不同的業務邏輯
                 if text.startswith('!'):
                     command = text[1:].lower()
                     print(f"收到命令: {command}")  # 添加日誌
@@ -49,7 +49,7 @@ def webhook():
                     # 打卡命令處理
                     if command == '快速打卡' or command == '上班打卡':
                         handle_quick_checkin(event, reply_token, "上班")
-                        return 'OK'  # 添加返回，避免繼續執行
+                        return 'OK'
                     elif command == '下班打卡':
                         handle_quick_checkin(event, reply_token, "下班")
                     elif command == '打卡報表':
@@ -64,10 +64,123 @@ def webhook():
                             "!下班打卡 - 快速完成下班打卡\n"
                             "!快速打卡 - 快速完成上班打卡（等同於!上班打卡）\n"
                             "!打卡報表 - 查看打卡統計報表\n"
+                            "!測試提醒 - 發送測試提醒\n"
+                            "!系統狀態 - 查看系統運行狀態\n"
+                            "!管理指令 - 顯示管理員指令列表\n"
                             "打卡 - 獲取打卡頁面連結\n"
                             "其他問題請聯繫管理員"
                         )
                         send_reply(reply_token, help_text)
+                    elif command == '測試提醒':
+                        # 測試發送提醒
+                        user_id = event['source'].get('userId')
+                        if user_id:
+                            # 獲取用戶資料
+                            try:
+                                profile_response = requests.get(
+                                    f'https://api.line.me/v2/bot/profile/{user_id}',
+                                    headers={'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'}
+                                )
+                                
+                                if profile_response.status_code == 200:
+                                    profile = profile_response.json()
+                                    display_name = profile.get('displayName', '用戶')
+                                    
+                                    # 發送測試提醒
+                                    from services.notification_service import send_line_notification
+                                    morning_message = f"⏰ 測試 - {display_name}，早安！您今天還沒有上班打卡，請記得打卡。"
+                                    send_line_notification(user_id, morning_message)
+                                    
+                                    send_reply(reply_token, "✅ 測試提醒已發送，請查看您的LINE通知")
+                                else:
+                                    send_reply(reply_token, "❌ 無法獲取用戶資料，請稍後再試")
+                            except Exception as e:
+                                send_reply(reply_token, f"❌ 發送提醒時出錯: {str(e)[:30]}...")
+                        else:
+                            send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
+                    elif command == '系統狀態':
+                        # 查詢系統狀態
+                        try:
+                            import sqlite3
+                            from datetime import datetime
+                            
+                            status_text = f"📊 系統狀態報告 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})\n"
+                            
+                            # 檢查數據庫
+                            conn = sqlite3.connect(Config.DB_PATH)
+                            c = conn.cursor()
+                            
+                            # 檢查打卡記錄數
+                            c.execute("SELECT COUNT(*) FROM checkin_records")
+                            checkin_count = c.fetchone()[0]
+                            status_text += f"✓ 打卡記錄總數: {checkin_count} 筆\n"
+                            
+                            # 檢查今日打卡數
+                            today = datetime.now().strftime("%Y-%m-%d")
+                            c.execute("SELECT COUNT(*) FROM checkin_records WHERE date = ?", (today,))
+                            today_count = c.fetchone()[0]
+                            status_text += f"✓ 今日打卡數: {today_count} 筆\n"
+                            
+                            # 檢查用戶數
+                            c.execute("SELECT COUNT(*) FROM users")
+                            user_count = c.fetchone()[0]
+                            status_text += f"✓ 用戶總數: {user_count} 人\n"
+                            
+                            # 檢查最近一次打卡
+                            c.execute("SELECT name, date, time, checkin_type FROM checkin_records ORDER BY id DESC LIMIT 1")
+                            last_record = c.fetchone()
+                            if last_record:
+                                status_text += f"✓ 最近打卡: {last_record[0]} 於 {last_record[1]} {last_record[2]} {last_record[3]}打卡\n"
+                            
+                            conn.close()
+                            
+                            # 添加系統版本信息
+                            status_text += f"✓ 系統運行正常\n✓ 版本: 2025.04.01"
+                            
+                            send_reply(reply_token, status_text)
+                        except Exception as e:
+                            send_reply(reply_token, f"❌ 獲取系統狀態時出錯: {str(e)[:30]}...")
+                    elif command == '管理指令':
+                        # 檢查是否為管理員
+                        user_id = event['source'].get('userId')
+                        admin_ids = ['U123456789abcdef', 'U987654321abcdef']  # 這裡設置管理員的用戶ID列表
+                        
+                        if user_id in admin_ids:
+                            admin_help = (
+                                "🔧 管理員指令列表：\n"
+                                "!重置菜單 - 重置LINE Rich Menu\n"
+                                "!診斷系統 - 執行系統診斷\n"
+                                "!備份數據 - 觸發數據庫備份\n"
+                                "!清理緩存 - 清理系統緩存\n"
+                                "!發送群通知 - 發送全群通知\n"
+                            )
+                            send_reply(reply_token, admin_help)
+                        else:
+                            send_reply(reply_token, "⚠️ 您不是管理員，無法查看管理指令")
+                    elif command == '重置菜單' and event['source'].get('userId') in ['U123456789abcdef', 'U987654321abcdef']:
+                        # 重置Rich Menu (僅管理員)
+                        from services.rich_menu_service import init_rich_menu_process
+                        success, message = init_rich_menu_process()
+                        send_reply(reply_token, f"{'✅' if success else '❌'} {message}")
+                    elif command == '診斷系統' and event['source'].get('userId') in ['U123456789abcdef', 'U987654321abcdef']:
+                        # 執行系統診斷 (僅管理員)
+                        send_reply(reply_token, "🔍 系統診斷已啟動，報告將稍後發送")
+                        
+                        # 異步執行診斷
+                        import threading
+                        def run_diagnostic():
+                            try:
+                                import requests
+                                diagnostic_response = requests.get(f"{Config.APP_URL}/system-diagnostic")
+                                if diagnostic_response.status_code == 200:
+                                    from services.notification_service import send_line_notification
+                                    send_line_notification(event['source'].get('userId'), "📊 系統診斷完成，請訪問管理面板查看詳細報告")
+                            except Exception as e:
+                                print(f"診斷錯誤: {e}")
+                        
+                        thread = threading.Thread(target=run_diagnostic)
+                        thread.daemon = True
+                        thread.start()
                     else:
                         # 其他命令使用默認回覆
                         send_reply(reply_token, default_reply)
