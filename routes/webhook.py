@@ -569,3 +569,282 @@ def diagnose_quick_checkin():
         })
     except Exception as e:
         return jsonify({"診斷錯誤": str(e)})
+
+@webhook_bp.route('/system-diagnostic', methods=['GET'])
+def system_diagnostic():
+    import os
+    import sqlite3
+    import json
+    import requests
+    from datetime import datetime
+    from config import Config
+    
+    diagnostic = {
+        "時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "系統狀態": "運行中",
+        "測試項目": {}
+    }
+    
+    # 1. 檢查配置
+    try:
+        diagnostic["配置"] = {
+            "LINE_LOGIN_CHANNEL_ID": Config.LINE_LOGIN_CHANNEL_ID is not None,
+            "LINE_LOGIN_CHANNEL_SECRET": Config.LINE_LOGIN_CHANNEL_SECRET is not None,
+            "MESSAGING_CHANNEL_ACCESS_TOKEN": Config.MESSAGING_CHANNEL_ACCESS_TOKEN is not None,
+            "LINE_GROUP_ID": Config.LINE_GROUP_ID is not None,
+            "LIFF_ID": Config.LIFF_ID is not None,
+            "APP_URL": Config.APP_URL
+        }
+    except Exception as e:
+        diagnostic["配置"] = {"錯誤": str(e)}
+    
+    # 2. 檢查數據庫
+    try:
+        if os.path.exists(Config.DB_PATH):
+            diagnostic["數據庫"]["文件存在"] = True
+            diagnostic["數據庫"]["文件大小"] = f"{os.path.getsize(Config.DB_PATH)} 字節"
+            
+            conn = sqlite3.connect(Config.DB_PATH)
+            c = conn.cursor()
+            
+            # 檢查表結構
+            table_structure = {}
+            for table in ["checkin_records", "group_messages"]:
+                c.execute(f"PRAGMA table_info({table})")
+                columns = c.fetchall()
+                table_structure[table] = [col[1] for col in columns]
+            
+            diagnostic["數據庫"]["表結構"] = table_structure
+            
+            # 檢查記錄數
+            c.execute("SELECT COUNT(*) FROM checkin_records")
+            diagnostic["數據庫"]["打卡記錄數"] = c.fetchone()[0]
+            
+            c.execute("SELECT COUNT(*) FROM group_messages")
+            diagnostic["數據庫"]["群組消息數"] = c.fetchone()[0]
+            
+            conn.close()
+        else:
+            diagnostic["數據庫"] = {
+                "文件存在": False,
+                "解決方案": "需要初始化數據庫"
+            }
+    except Exception as e:
+        diagnostic["數據庫"] = {"錯誤": str(e)}
+    
+    # 3. 測試 LINE API
+    try:
+        headers = {
+            'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'
+        }
+        
+        # 測試 Bot 信息
+        bot_response = requests.get('https://api.line.me/v2/bot/info', headers=headers)
+        
+        diagnostic["LINE API"] = {
+            "狀態碼": bot_response.status_code,
+            "有效性": bot_response.status_code == 200
+        }
+        
+        if bot_response.status_code == 200:
+            diagnostic["LINE API"]["Bot信息"] = bot_response.json()
+        else:
+            diagnostic["LINE API"]["錯誤"] = bot_response.text
+    except Exception as e:
+        diagnostic["LINE API"] = {"錯誤": str(e)}
+    
+    # 4. 測試打卡功能
+    try:
+        from services.checkin_service import process_checkin
+        
+        success, message, timestamp = process_checkin(
+            "test_diagnostic", 
+            "診斷測試", 
+            "系統診斷", 
+            note="自動診斷測試", 
+            checkin_type="上班"
+        )
+        
+        diagnostic["測試項目"]["基本打卡"] = {
+            "成功": success,
+            "消息": message,
+            "時間": timestamp
+        }
+    except Exception as e:
+        import traceback
+        diagnostic["測試項目"]["基本打卡"] = {
+            "錯誤": str(e),
+            "詳細信息": traceback.format_exc()
+        }
+    
+    # 5. 測試 quick_checkin 功能
+    try:
+        from services.checkin_service import quick_checkin
+        
+        success, message, timestamp = quick_checkin(
+            "test_diagnostic", 
+            "診斷測試", 
+            "上班"
+        )
+        
+        diagnostic["測試項目"]["快速打卡"] = {
+            "成功": success,
+            "消息": message,
+            "時間": timestamp
+        }
+    except Exception as e:
+        import traceback
+        diagnostic["測試項目"]["快速打卡"] = {
+            "錯誤": str(e),
+            "詳細信息": traceback.format_exc()
+        }
+    
+    # 6. 測試發送群組消息
+    try:
+        from services.notification_service import send_line_message_to_group
+        
+        message = f"📱 系統診斷測試 - {datetime.now().strftime('%H:%M:%S')}"
+        result = send_line_message_to_group(message)
+        
+        diagnostic["測試項目"]["群組消息"] = {
+            "成功": result,
+            "目標群組": Config.LINE_GROUP_ID
+        }
+    except Exception as e:
+        diagnostic["測試項目"]["群組消息"] = {"錯誤": str(e)}
+    
+    # 返回診斷結果
+    return jsonify(diagnostic)
+
+@webhook_bp.route('/emergency-reset', methods=['GET'])
+def emergency_reset():
+    import os
+    import sqlite3
+    from config import Config
+    from datetime import datetime
+    
+    result = {
+        "時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "操作": "緊急重置"
+    }
+    
+    # 重建數據庫
+    try:
+        # 備份現有數據庫
+        if os.path.exists(Config.DB_PATH):
+            backup_path = f"{Config.DB_PATH}.bak.{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            os.rename(Config.DB_PATH, backup_path)
+            result["備份"] = f"數據庫已備份為 {backup_path}"
+        
+        # 創建新數據庫
+        conn = sqlite3.connect(Config.DB_PATH)
+        c = conn.cursor()
+        
+        # 建立打卡紀錄表格
+        c.execute('''
+            CREATE TABLE checkin_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                location TEXT,
+                note TEXT,
+                latitude REAL,
+                longitude REAL,
+                date TEXT NOT NULL,
+                time TEXT NOT NULL,
+                checkin_type TEXT DEFAULT '上班'
+            )
+        ''')
+        
+        # 建立群組訊息表格
+        c.execute('''
+            CREATE TABLE group_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                message TEXT,
+                timestamp TEXT NOT NULL
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        
+        result["數據庫"] = "重建成功"
+        
+        # 創建測試記錄
+        try:
+            from services.checkin_service import process_checkin
+            
+            success, message, timestamp = process_checkin(
+                "emergency_reset", 
+                "系統重置", 
+                "緊急重置", 
+                note="系統緊急重置測試", 
+                checkin_type="上班"
+            )
+            
+            result["測試記錄"] = {
+                "成功": success,
+                "消息": message,
+                "時間": timestamp
+            }
+        except Exception as e:
+            result["測試記錄"] = {"錯誤": str(e)}
+        
+    except Exception as e:
+        result["錯誤"] = str(e)
+    
+    return jsonify(result)
+
+@webhook_bp.route('/function-test', methods=['GET'])
+def function_test():
+    function_name = request.args.get('function', 'quick_checkin')
+    user_id = request.args.get('userId', 'test_user')
+    
+    result = {
+        "函數": function_name,
+        "參數": {
+            "user_id": user_id,
+            "其他參數": "根據函數類型自動設置"
+        }
+    }
+    
+    try:
+        if function_name == 'quick_checkin':
+            from services.checkin_service import quick_checkin
+            success, message, timestamp = quick_checkin(user_id, "測試用戶", "上班")
+            result["結果"] = {
+                "success": success,
+                "message": message,
+                "timestamp": timestamp
+            }
+        
+        elif function_name == 'save_checkin':
+            from db.crud import save_checkin
+            success, message = save_checkin(user_id, "測試用戶", "測試位置", "測試備註", None, None, "上班")
+            result["結果"] = {
+                "success": success,
+                "message": message
+            }
+        
+        elif function_name == 'send_message':
+            from services.notification_service import send_line_message_to_group
+            success = send_line_message_to_group("這是一條測試消息")
+            result["結果"] = {
+                "success": success
+            }
+        
+        else:
+            result["錯誤"] = f"未知函數: {function_name}"
+    
+    except Exception as e:
+        import traceback
+        result["錯誤"] = {
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }
+    
+    return jsonify(result)
+
+
