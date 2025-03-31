@@ -307,12 +307,17 @@ initializeLiff().then(() => {
     const submitButton = document.getElementById('submitButton');
     const inOption = document.querySelector('.checkin-in');
     const outOption = document.querySelector('.checkin-out');
+    const status = document.getElementById('status');
     
     // 移除所有 selected 類別
     inOption.classList.remove('selected');
     outOption.classList.remove('selected');
+
+    // 檢查是否已存在警告訊息
+    const existingWarning = document.querySelector('.alert-warning');
     
-    if (checkinInRadio.checked) {
+    if (checkinOutRadio.checked && checkinOutRadio.disabled) {
+      checkinInRadio.checked = true;
       submitButton.innerHTML = "✅ 上班打卡";
       submitButton.className = "checkin-button-in";
       inOption.classList.add('selected');
