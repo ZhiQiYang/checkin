@@ -52,3 +52,11 @@ def parse_datetime(dt_string):
     dt = datetime.strptime(dt_string, '%Y-%m-%d %H:%M:%S')
     timezone = get_timezone()
     return timezone.localize(dt)
+
+# 在 utils/timezone.py 中添加函數
+def get_timezone_name():
+    """獲取當前時區名稱"""
+    return get_timezone().tzname(datetime.now())
+
+# 然後在顯示時間的地方可以加上時區信息
+timestamp = f"{get_datetime_string()} ({get_timezone_name()})"
