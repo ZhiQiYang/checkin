@@ -318,6 +318,13 @@ initializeLiff().then(() => {
     
     if (checkinOutRadio.checked && checkinOutRadio.disabled) {
       checkinInRadio.checked = true;
+     if (!existingWarning) {
+      const warningHtml = `
+        <div class="alert alert-warning">
+          <strong>⚠️ 請注意</strong>
+          <p class="mb-0">您必須先完成上班打卡，才能進行下班打卡。</p>
+        </div>
+      `;
       submitButton.innerHTML = "✅ 上班打卡";
       submitButton.className = "checkin-button-in";
       inOption.classList.add('selected');
