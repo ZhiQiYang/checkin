@@ -31,8 +31,8 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
 
         from utils.timezone import get_current_time, get_date_string, get_time_string, get_datetime_string
         # 取得當前日期和時間
-        today = datetime.now().strftime('%Y-%m-%d')
-        time_str = datetime.now().strftime('%H:%M:%S')
+        today = utils.timezone.get_date_string()
+        time_str = utils.timezone.get_time_string()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         # 檢查是否已有相同類型的打卡記錄
