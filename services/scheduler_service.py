@@ -4,17 +4,18 @@ import threading
 import time
 import schedule
 from datetime import datetime
-import pytz  # 添加 pytz 庫來處理時區
+import pytz
 from db.crud import get_users_needing_reminder, log_reminder
 from services.notification_service import send_line_notification
-from config import Config  # 引入配置
+from config import Config
+from utils.timezone import get_current_time, get_timezone  # 引入時區工具函數
 
 class ReminderScheduler:
     def __init__(self):
         self.is_running = False
         self.thread = None
-        # 設定默認時區為台灣時區（可從配置文件中獲取）
-        self.timezone = pytz.timezone(Config.TIMEZONE if hasattr(Config, 'TIMEZONE') else 'Asia/Taipei')
+        # 使用 utils/timezone.py 中的函數獲取時區
+        self.timezone = get_timezone()
     
     def start(self):
         if self.is_running:
@@ -39,8 +40,8 @@ class ReminderScheduler:
     
     def get_local_time(self):
         """獲取當前的本地時間（考慮時區）"""
-        utc_now = datetime.now(pytz.utc)
-        return utc_now.astimezone(self.timezone)
+        # 使用 utils/timezone.py 中的函數獲取當前時間
+        return get_current_time()
     
     def check_morning_reminders(self):
         now = self.get_local_time()
