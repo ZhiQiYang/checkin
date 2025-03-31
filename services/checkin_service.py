@@ -1,5 +1,8 @@
 # services/checkin_service.py
 from datetime import datetime
+from utils.timezone import get_current_time, get_date_string, get_time_string, get_datetime_string
+from utils.timezone import get_current_time, get_date_string, get_time_string, get_datetime_string
+
 from db.crud import (
     insert_checkin_record, 
     has_checkin_today, 
@@ -31,9 +34,9 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
 
         from utils.timezone import get_current_time, get_date_string, get_time_string, get_datetime_string
         # 取得當前日期和時間
-        today = utils.timezone.get_date_string()
-        time_str = utils.timezone.get_time_string()
-        timestamp = utils.timezone.get_current_time().strftime("%Y-%m-%d %H:%M:%S")
+        today = get_date_string()
+        time_str = get_time_string()
+        timestamp = get_datetime_string()
         
         # 檢查是否已有相同類型的打卡記錄
         if has_checkin_today(user_id, checkin_type, today):
