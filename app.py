@@ -11,9 +11,6 @@ from services.scheduler_service import reminder_scheduler
 # 從 update_db.py 導入更新函數
 from db.update_db import update_database
 
-# 先執行數據庫更新
-update_database()  # 確保數據庫結構正確
-
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -22,7 +19,14 @@ def create_app(config_class=Config):
     from utils.file_helper import ensure_file_exists
     print("檔案檢查完成")
     
-    # 初始化資料庫
+    # 檢查並更新數據庫結構（保留數據）
+    try:
+        update_database()
+    except Exception as e:
+        print(f"警告: 數據庫更新過程中出錯: {e}")
+        print("將繼續使用現有數據庫結構")
+    
+    # 初始化資料庫（如果表不存在則創建）
     init_db()
     
     # 註冊藍圖
