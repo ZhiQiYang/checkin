@@ -6,45 +6,60 @@ from datetime import datetime
 DB_PATH = 'checkin.db'
 
 def init_db():
+    """初始化資料庫，如果表不存在則創建"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
-    # 建立打卡紀錄表格
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS checkin_records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            location TEXT,
-            note TEXT,
-            latitude REAL,
-            longitude REAL,
-            date TEXT NOT NULL,
-            time TEXT NOT NULL,
-            checkin_type TEXT DEFAULT '上班'
-        )
-    ''')
+    # 檢查表是否已存在
+    c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    existing_tables = [table[0] for table in c.fetchall()]
     
-    # 建立群組訊息表格
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS group_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            user_name TEXT NOT NULL,
-            message TEXT,
-            timestamp TEXT NOT NULL
-        )
-    ''')
+    # 建立打卡紀錄表格（如果不存在）
+    if 'checkin_records' not in existing_tables:
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS checkin_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                location TEXT,
+                note TEXT,
+                latitude REAL,
+                longitude REAL,
+                date TEXT NOT NULL,
+                time TEXT NOT NULL,
+                checkin_type TEXT DEFAULT '上班'
+            )
+        ''')
+        print("✅ 創建了 checkin_records 表")
     
-    # 建立用戶表
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            display_name TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    # 建立群組訊息表格（如果不存在）
+    if 'group_messages' not in existing_tables:
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS group_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                message TEXT,
+                timestamp TEXT NOT NULL
+            )
+        ''')
+        print("✅ 創建了 group_messages 表")
+    
+    # 建立用戶表（如果不存在）
+    if 'users' not in existing_tables:
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                display_name TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        print("✅ 創建了 users 表")
+    
+    # 建立提醒設置表（如果不存在）
+    if 'reminder_settings' not in existing_tables:
+        create_reminder_tables()
     
     conn.commit()
     conn.close()
