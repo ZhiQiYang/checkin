@@ -102,6 +102,35 @@ def create_app(config_class=Config):
             # LINE API 連接問題
             return "LINE 服務連接錯誤，請稍後再試", 500
         return "伺服器內部錯誤，請查看日誌獲取詳情", 500
+
+    @app.route('/check-timezone')
+def check_timezone():
+    import pytz
+    import time
+    from datetime import datetime
+    
+    # 獲取系統時區
+    system_tz = time.tzname
+    
+    # 獲取配置的時區
+    config_tz = Config.TIMEZONE if hasattr(Config, 'TIMEZONE') else 'Asia/Taipei'
+    
+    # 獲取當前 UTC 時間
+    utc_now = datetime.now(pytz.utc)
+    
+    # 轉換到配置的時區
+    config_time = utc_now.astimezone(pytz.timezone(config_tz))
+    
+    # 可用時區列表
+    available_timezones = pytz.all_timezones
+    
+    return {
+        "system_timezone": system_tz,
+        "configured_timezone": config_tz,
+        "utc_time": str(utc_now),
+        "configured_timezone_time": str(config_time),
+        "available_asia_timezones": [tz for tz in available_timezones if tz.startswith('Asia/')]
+    }
     
     # 啟動保活線程
     if not app.debug:
