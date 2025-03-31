@@ -28,7 +28,8 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
     try:
         # 保存用戶信息
         save_or_update_user(user_id, name)
-        
+
+        from utils.timezone import get_current_time, get_date_string, get_time_string, get_datetime_string
         # 取得當前日期和時間
         today = datetime.now().strftime('%Y-%m-%d')
         time_str = datetime.now().strftime('%H:%M:%S')
