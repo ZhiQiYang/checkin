@@ -48,11 +48,11 @@ def init_db():
     # 建立用戶表（如果不存在）
     if 'users' not in existing_tables:
         c.execute('''
-            CREATE TABLE IF NOT EXISTS users (
+            E TABLE IF NOT EXISTS users (
                 user_id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 display_name TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                ed_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         print("✅ 創建了 users 表")
@@ -153,10 +153,10 @@ def create_reminder_tables():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
             enabled BOOLEAN DEFAULT 1,
-            morning_time TEXT DEFAULT '09:00',  # 上班提醒時間
-            evening_time TEXT DEFAULT '18:00',  # 下班提醒時間
-            weekend_enabled BOOLEAN DEFAULT 0,  # 是否在周末提醒
-            holiday_enabled BOOLEAN DEFAULT 0,  # 是否在節假日提醒
+            morning_time TEXT DEFAULT '09:00',
+            evening_time TEXT DEFAULT '18:00',
+            weekend_enabled BOOLEAN DEFAULT 0,
+            holiday_enabled BOOLEAN DEFAULT 0,
             created_at DATETIME,
             updated_at DATETIME,
             UNIQUE(user_id)
@@ -168,9 +168,9 @@ def create_reminder_tables():
         CREATE TABLE IF NOT EXISTS reminder_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
-            reminder_type TEXT NOT NULL,  # morning/evening
+            reminder_type TEXT NOT NULL,
             sent_at DATETIME,
-            status TEXT  # sent/delivered/read
+            status TEXT
         )
     ''')
     
