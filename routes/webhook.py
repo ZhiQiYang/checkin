@@ -9,6 +9,7 @@ from services.checkin_service import quick_checkin
 from services.group_service import save_group_message
 import traceback
 from config import Config
+from utils.timezone import get_datetime_string
 
 webhook_bp = Blueprint('webhook', __name__)
 
@@ -223,7 +224,7 @@ def webhook():
                         if profile_response.status_code == 200:
                             profile = profile_response.json()
                             user_name = profile.get('displayName', '未知用戶')
-                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            timestamp = get_datetime_string()
                             save_group_message(user_id, user_name, text, timestamp)
         
         return 'OK'
