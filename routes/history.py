@@ -2,6 +2,7 @@ from flask import Blueprint, request, render_template
 from datetime import datetime, timedelta
 from config import Config
 import sqlite3
+from utils.timezone import get_current_time
 
 history_bp = Blueprint('history', __name__)
 
@@ -27,7 +28,8 @@ def personal_history():
     else:
         # 計算日期範圍
         days = int(days_filter)
-        date_limit = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+        now = get_current_time()
+        date_limit = (now - timedelta(days=days)).strftime('%Y-%m-%d')
         
         c.execute('''
             SELECT * FROM checkin_records 
