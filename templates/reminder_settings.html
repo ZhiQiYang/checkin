@@ -1,11 +1,77 @@
-<!-- 新文件 templates/reminder_settings.html -->
+<!-- templates/reminder_settings.html -->
 {% extends "base.html" %}
 
 {% block title %}提醒設置{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* 自定義開關按鈕樣式，兼容 Bootstrap 4 */
+    .custom-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+    
+    .custom-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+    
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+        background-color: #06C755;
+    }
+    
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+    
+    .switch-label {
+        font-weight: normal;
+        margin-left: 10px;
+        cursor: pointer;
+    }
+    
+    .time-input {
+        max-width: 200px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <h1 class="mb-4">⏰ 打卡提醒設置</h1>
+    
+    <div id="alert-container">
+        <!-- 這裡會動態添加提示框 -->
+    </div>
     
     <div class="card mb-4">
         <div class="card-body">
@@ -13,41 +79,44 @@
                 <input type="hidden" id="userId" value="">
                 
                 <div class="form-group mb-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="enabled" checked>
-                        <label class="form-check-label" for="enabled">啟用打卡提醒</label>
-                    </div>
+                    <label class="custom-switch">
+                        <input type="checkbox" id="enabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <span class="switch-label">啟用打卡提醒</span>
                 </div>
                 
                 <div class="form-group mb-3">
                     <label for="morningTime">上班提醒時間：</label>
-                    <input type="time" id="morningTime" class="form-control" value="09:00">
+                    <input type="time" id="morningTime" class="form-control time-input" value="09:00">
                     <small class="text-muted">設置您希望在多晚沒打卡時收到上班提醒</small>
                 </div>
                 
                 <div class="form-group mb-3">
                     <label for="eveningTime">下班提醒時間：</label>
-                    <input type="time" id="eveningTime" class="form-control" value="18:00">
+                    <input type="time" id="eveningTime" class="form-control time-input" value="18:00">
                     <small class="text-muted">設置您希望在多晚沒打卡時收到下班提醒</small>
                 </div>
                 
                 <div class="form-group mb-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="weekendEnabled">
-                        <label class="form-check-label" for="weekendEnabled">週末也提醒</label>
-                    </div>
+                    <label class="custom-switch">
+                        <input type="checkbox" id="weekendEnabled">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="switch-label">週末也提醒</span>
                 </div>
                 
                 <div class="form-group mb-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="holidayEnabled">
-                        <label class="form-check-label" for="holidayEnabled">節假日也提醒</label>
-                    </div>
+                    <label class="custom-switch">
+                        <input type="checkbox" id="holidayEnabled">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="switch-label">節假日也提醒</span>
                 </div>
                 
                 <button type="button" id="saveBtn" class="btn btn-primary">保存設置</button>
-                <button type="button" id="testMorningBtn" class="btn btn-outline-info ms-2">測試上班提醒</button>
-                <button type="button" id="testEveningBtn" class="btn btn-outline-info ms-2">測試下班提醒</button>
+                <button type="button" id="testMorningBtn" class="btn btn-outline-info mr-2">測試上班提醒</button>
+                <button type="button" id="testEveningBtn" class="btn btn-outline-info">測試下班提醒</button>
             </form>
         </div>
     </div>
@@ -72,20 +141,25 @@
     
     // 初始化LIFF
     async function initializeLiff() {
-        await liff.init({ liffId: "{{ liff_id }}" });
-        if (!liff.isLoggedIn()) {
-            liff.login();
-            return;
+        try {
+            await liff.init({ liffId: "{{ liff_id }}" });
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+            
+            const profile = await liff.getProfile();
+            userId = profile.userId;
+            displayName = profile.displayName;
+            
+            document.getElementById("userId").value = userId;
+            
+            // 加載提醒設置
+            loadReminderSettings();
+        } catch (error) {
+            console.error("LIFF初始化失敗:", error);
+            showAlert("error", "無法初始化LIFF，請確保您在LINE應用中開啟此頁面");
         }
-        
-        const profile = await liff.getProfile();
-        userId = profile.userId;
-        displayName = profile.displayName;
-        
-        document.getElementById("userId").value = userId;
-        
-        // 加載提醒設置
-        loadReminderSettings();
     }
     
     // 加載提醒設置
@@ -166,21 +240,26 @@
         }
     }
     
-    // 顯示提示訊息
+    // 顯示提示訊息 (相容於 Bootstrap 4)
     function showAlert(type, message) {
+        const alertContainer = document.getElementById("alert-container");
+        
+        // 創建警告框
         const alertDiv = document.createElement("div");
         alertDiv.className = `alert alert-${type === "success" ? "success" : "danger"} alert-dismissible fade show`;
         alertDiv.innerHTML = `
             ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
         `;
         
-        document.querySelector(".container").prepend(alertDiv);
+        // 添加到容器
+        alertContainer.appendChild(alertDiv);
         
         // 3秒後自動消失
         setTimeout(() => {
-            alertDiv.classList.remove("show");
-            setTimeout(() => alertDiv.remove(), 150);
+            $(alertDiv).alert('close');
         }, 3000);
     }
     
