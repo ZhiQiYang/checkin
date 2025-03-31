@@ -105,8 +105,8 @@ def webhook():
                                     
                                     # 發送測試提醒
                                     from services.notification_service import send_line_notification
-                                    morning_message = f"⏰ 測試 - {display_name}，早安！您今天還沒有上班打卡，請記得打卡。"
-                                    send_line_notification(user_id, morning_message)
+                                    message = f"⏰ 測試 - {display_name}，早安！您今天還沒有上班打卡，請記得打卡。"
+                                    send_line_notification(user_id, message)
                                     
                                     send_reply(reply_token, "✅ 測試提醒已發送，請查看您的LINE通知")
                                 else:
