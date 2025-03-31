@@ -77,6 +77,8 @@
 {% block content %}
 <h1>📍 打卡頁面</h1>
 
+<div id="status-message" class="alert alert-info">正在載入打卡狀態...</div>
+
 <form id="checkinForm">
   <input type="hidden" id="userId" value="">
   <input type="hidden" id="displayName" value="">
@@ -109,7 +111,7 @@
   <input type="text" id="longitude" readonly>
 
   <button type="button" onclick="getLocation()">📍 自動定位</button>
-  <button type="button" id="submitButton" class="checkin-button-in" onclick="submitCheckin()">✅ 上班打卡</button>
+  <button type="button" id="submitBtn" class="checkin-button-in" onclick="submitCheckin()">✅ 上班打卡</button>
 </form>
 
 <div id="status"></div>
@@ -118,126 +120,169 @@
 {% block scripts %}
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
+  let userId = "";
+  let displayName = "";
+
+  // 初始化LIFF
   async function initializeLiff() {
-    await liff.init({ liffId: "{{ liff_id }}" });
-    if (!liff.isLoggedIn()) liff.login();
-    const profile = await liff.getProfile();
-    document.getElementById("userId").value = profile.userId;
-    document.getElementById("displayName").value = profile.displayName;
-    # 在 templates/checkin.html 中的 JavaScript 部分添加以下代碼
-
-# 添加到 initializeLiff 函數的最後（或創建一個新的函數並在 initializeLiff 後調用）
-
-# 修改 templates/checkin.html 中的 checkTodayCheckinStatus 函數
-
-async function checkTodayCheckinStatus() {
-  try {
-    const userId = document.getElementById("userId").value;
-    if (!userId) return; // 如果還沒有獲取到用戶ID，就不檢查
-    
-    const response = await fetch(`/api/checkin/status?userId=${userId}`);
-    const data = await response.json();
-    
-    if (data.success) {
-      const status = document.getElementById("status");
-      const statusHtml = [];
-      const submitButton = document.getElementById("submitButton");
-      
-      // 檢查上班打卡狀態
-      if (data.status['上班']) {
-        document.getElementById("checkinType-in").disabled = true;
-        statusHtml.push(`
-          <div class="alert alert-success">
-            <strong>✅ 已完成上班打卡</strong>
-            <p class="mb-0">打卡時間: ${data.status['上班']}</p>
-          </div>
-        `);
+    try {
+      await liff.init({ liffId: "{{ liff_id }}" });
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
       }
       
-      // 檢查下班打卡狀態
-      if (data.status['下班']) {
-        document.getElementById("checkinType-out").disabled = true;
-        statusHtml.push(`
-          <div class="alert alert-success">
-            <strong>✅ 已完成下班打卡</strong>
-            <p class="mb-0">打卡時間: ${data.status['下班']}</p>
-          </div>
-        `);
-      }
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+      displayName = profile.displayName;
       
-      // 如果兩種打卡都完成了
-      if (data.status['上班'] && data.status['下班']) {
-        statusHtml.push(`
-          <div class="alert alert-info">
-            <strong>🎉 太棒了！</strong>
-            <p class="mb-0">您今天的上班和下班打卡都已完成！</p>
-          </div>
-        `);
-        // 禁用提交按鈕，因為今天的打卡已全部完成
-        submitButton.disabled = true;
-      } 
-      // 如果上班已打卡但下班未打卡，自動選擇下班打卡
-      else if (data.status['上班'] && !data.status['下班']) {
-        document.getElementById("checkinType-out").checked = true;
-        updateCheckinTypeUI();
-      }
-      // 如果沒有上班打卡，禁用下班打卡選項
-      else if (!data.status['上班']) {
-        document.getElementById("checkinType-in").checked = true;
-        document.getElementById("checkinType-out").disabled = true;
-        
-        // 如果用戶嘗試選擇下班打卡，添加提示
-        statusHtml.push(`
-          <div class="alert alert-warning">
-            <strong>⚠️ 請注意</strong>
-            <p class="mb-0">您必須先完成上班打卡，才能進行下班打卡。</p>
-          </div>
-        `);
-        
-        updateCheckinTypeUI();
-      }
+      document.getElementById("userId").value = profile.userId;
+      document.getElementById("displayName").value = profile.displayName;
       
-      // 更新狀態顯示
-      if (statusHtml.length > 0) {
-        status.innerHTML = statusHtml.join('');
-      }
+      // 加載完成後，檢查打卡狀態
+      checkTodayCheckinStatus();
+    } catch (error) {
+      console.error("LIFF初始化失敗:", error);
+      document.getElementById("status").innerHTML = `
+        <div class="alert alert-danger">
+          <strong>❌ LIFF初始化失敗</strong>
+          <p>請確保您在LINE應用程式中開啟此頁面。</p>
+        </div>
+      `;
     }
-  } catch (error) {
-    console.error("檢查打卡狀態失敗:", error);
-  }
-}
-  } catch (error) {
-    console.error("檢查打卡狀態失敗:", error);
-  }
-}
-
-// 將這行添加到 initializeLiff 函數的最後
-initializeLiff().then(() => {
-  // 自動檢查今日打卡狀態
-  checkTodayCheckinStatus();
-});
   }
 
+  // 檢查今日打卡狀態
+  async function checkTodayCheckinStatus() {
+    try {
+      const userId = document.getElementById("userId").value;
+      if (!userId) return; // 如果還沒有獲取到用戶ID，就不檢查
+      
+      const response = await fetch(`/api/checkin/status?userId=${userId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        const statusMessage = document.getElementById("status-message");
+        const statusHtml = [];
+        
+        // 檢查上班打卡狀態
+        if (data.status['上班']) {
+          document.getElementById("checkinType-in").disabled = true;
+          statusHtml.push(`今天已完成上班打卡（${data.status['上班']}）`);
+        }
+        
+        // 檢查下班打卡狀態
+        if (data.status['下班']) {
+          document.getElementById("checkinType-out").disabled = true;
+          statusHtml.push(`今天已完成下班打卡（${data.status['下班']}）`);
+        }
+        
+        // 如果兩種打卡都完成了
+        if (data.status['上班'] && data.status['下班']) {
+          statusMessage.className = "alert alert-success";
+          statusMessage.innerHTML = `<strong>🎉 今天的上班和下班打卡都已完成！</strong>`;
+          document.getElementById("submitBtn").disabled = true;
+        } 
+        // 如果上班已打卡但下班未打卡，自動選擇下班打卡
+        else if (data.status['上班'] && !data.status['下班']) {
+          document.getElementById("checkinType-out").checked = true;
+          statusMessage.className = "alert alert-info";
+          statusMessage.innerHTML = `<strong>✅ 已完成上班打卡，可以進行下班打卡</strong>`;
+          updateCheckinTypeUI();
+        }
+        // 如果沒有上班打卡，禁用下班打卡選項
+        else if (!data.status['上班']) {
+          document.getElementById("checkinType-in").checked = true;
+          document.getElementById("checkinType-out").disabled = true;
+          statusMessage.className = "alert alert-warning";
+          statusMessage.innerHTML = `<strong>⚠️ 請先完成上班打卡，才能進行下班打卡</strong>`;
+          updateCheckinTypeUI();
+        }
+      } else {
+        document.getElementById("status-message").className = "alert alert-warning";
+        document.getElementById("status-message").innerHTML = `<strong>⚠️ 無法取得打卡狀態，請重新載入頁面</strong>`;
+      }
+    } catch (error) {
+      console.error("檢查打卡狀態失敗:", error);
+      document.getElementById("status-message").className = "alert alert-danger";
+      document.getElementById("status-message").innerHTML = `<strong>❌ 檢查打卡狀態失敗</strong>`;
+    }
+  }
+
+  // 獲取位置
   function getLocation() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         pos => {
           document.getElementById("latitude").value = pos.coords.latitude;
           document.getElementById("longitude").value = pos.coords.longitude;
-          document.getElementById("status").innerText = "✅ 已取得定位資訊";
+          document.getElementById("status").innerHTML = `
+            <div class="alert alert-success">
+              <strong>✅ 已取得定位資訊</strong>
+            </div>
+          `;
         },
         err => {
-          document.getElementById("status").innerText = "❌ 取得定位失敗";
+          document.getElementById("status").innerHTML = `
+            <div class="alert alert-danger">
+              <strong>❌ 取得定位失敗</strong>
+              <p>${err.message}</p>
+            </div>
+          `;
         }
       );
     } else {
-      document.getElementById("status").innerText = "❌ 瀏覽器不支援定位功能";
+      document.getElementById("status").innerHTML = `
+        <div class="alert alert-danger">
+          <strong>❌ 瀏覽器不支援定位功能</strong>
+        </div>
+      `;
     }
   }
 
+  // 更新打卡類型UI
+  function updateCheckinTypeUI() {
+    const checkinInRadio = document.getElementById('checkinType-in');
+    const checkinOutRadio = document.getElementById('checkinType-out');
+    const submitBtn = document.getElementById('submitBtn');
+    const inOption = document.querySelector('.checkin-in');
+    const outOption = document.querySelector('.checkin-out');
+    
+    // 移除所有 selected 類別
+    inOption.classList.remove('selected');
+    outOption.classList.remove('selected');
+    
+    // 檢查是否嘗試選擇下班打卡但被禁用
+    if (checkinOutRadio.checked && checkinOutRadio.disabled) {
+      checkinInRadio.checked = true;
+    }
+    
+    // 根據選中的打卡類型更新UI
+    if (checkinInRadio.checked) {
+      submitBtn.innerHTML = "✅ 上班打卡";
+      submitBtn.className = "btn btn-primary btn-lg";
+      inOption.classList.add('selected');
+    } else {
+      submitBtn.innerHTML = "✅ 下班打卡";
+      submitBtn.className = "btn btn-success btn-lg";
+      outOption.classList.add('selected');
+    }
+  }
+
+  // 提交打卡
   function submitCheckin() {
     // 獲取選中的打卡類型
     const checkinType = document.querySelector('input[name="checkinType"]:checked').value;
+    
+    // 驗證
+    if (!document.getElementById("location").value.trim()) {
+      document.getElementById("status").innerHTML = `
+        <div class="alert alert-danger">
+          <strong>❌ 請輸入位置名稱</strong>
+        </div>
+      `;
+      return;
+    }
     
     const payload = {
       userId: document.getElementById("userId").value,
@@ -249,114 +294,68 @@ initializeLiff().then(() => {
       checkinType: checkinType  // 使用選中的打卡類型
     };
 
+    // 提交前禁用按鈕
+    const submitBtn = document.getElementById("submitBtn");
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = "處理中...";
+
     fetch("/api/checkin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     })
     .then(res => res.json())
-    # 在 templates/checkin.html 中，更新成功訊息以清楚顯示打卡類型和狀態
-
-# 在 submitCheckin 函數中添加以下代碼，替換原有的成功訊息顯示邏輯
-.then(data => {
-  const status = document.getElementById("status");
-  
-  if (data.success) {
-    // 成功打卡
-    const checkinType = document.querySelector('input[name="checkinType"]:checked').value;
-    status.className = "success";
-    status.innerHTML = `
-      <div class="alert alert-success">
-        <strong>✅ ${data.message}</strong>
-        <p class="mt-2 mb-0">您已完成${checkinType}打卡！</p>
-      </div>
-    `;
-    
-    // 可選：禁用已成功的打卡類型按鈕
-    if (checkinType === "上班") {
-      document.getElementById("checkinType-in").disabled = true;
-      document.getElementById("checkinType-out").checked = true;
-      updateCheckinTypeUI(); // 更新UI顯示
-    } else if (checkinType === "下班") {
-      document.getElementById("checkinType-out").disabled = true;
-      // 兩種打卡都完成了，可以顯示一條完成訊息
-      if (document.getElementById("checkinType-in").disabled) {
-        status.innerHTML += `
-          <div class="alert alert-info mt-2">
-            <strong>🎉 太棒了！</strong>
-            <p class="mb-0">您今天的上班和下班打卡都已完成！</p>
+    .then(data => {
+      const status = document.getElementById("status");
+      
+      if (data.success) {
+        // 成功打卡
+        status.innerHTML = `
+          <div class="alert alert-success">
+            <strong>✅ ${data.message}</strong>
+            <p class="mt-2 mb-0">您已完成${checkinType}打卡！</p>
           </div>
         `;
+        
+        // 更新打卡狀態
+        setTimeout(checkTodayCheckinStatus, 1000);
+      } else {
+        // 打卡失敗
+        status.innerHTML = `
+          <div class="alert alert-danger">
+            <strong>❌ ${data.message}</strong>
+          </div>
+        `;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `✅ ${checkinType}打卡`;
       }
-    }
-  } else {
-    // 打卡失敗
-    status.className = "error";
-    status.innerHTML = `
-      <div class="alert alert-danger">
-        <strong>❌ ${data.message}</strong>
-      </div>
-    `;
-  }
-})
-
-  // 切換打卡類型時更新UI
-  function updateCheckinTypeUI() {
-    const checkinInRadio = document.getElementById('checkinType-in');
-    const checkinOutRadio = document.getElementById('checkinType-out');
-    const submitButton = document.getElementById('submitButton');
-    const inOption = document.querySelector('.checkin-in');
-    const outOption = document.querySelector('.checkin-out');
-    const status = document.getElementById('status');
-    
-    // 移除所有 selected 類別
-    inOption.classList.remove('selected');
-    outOption.classList.remove('selected');
-
-    // 檢查是否已存在警告訊息
-    const existingWarning = document.querySelector('.alert-warning');
-    
-    if (checkinOutRadio.checked && checkinOutRadio.disabled) {
-      checkinInRadio.checked = true;
-     if (!existingWarning) {
-      const warningHtml = `
-        <div class="alert alert-warning">
-          <strong>⚠️ 請注意</strong>
-          <p class="mb-0">您必須先完成上班打卡，才能進行下班打卡。</p>
+    })
+    .catch(error => {
+      console.error("打卡請求失敗:", error);
+      document.getElementById("status").innerHTML = `
+        <div class="alert alert-danger">
+          <strong>❌ 網路錯誤，請重試</strong>
         </div>
       `;
-      submitButton.innerHTML = "✅ 上班打卡";
-      submitButton.className = "checkin-button-in";
-      inOption.classList.add('selected');
-    } else {
-      submitButton.innerHTML = "✅ 下班打卡";
-      submitButton.className = "checkin-button-out";
-      outOption.classList.add('selected');
-    }
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `✅ ${checkinType}打卡`;
+    });
   }
-  
-  // 監聽打卡類型變更事件
-  document.getElementById('checkinType-in').addEventListener('change', updateCheckinTypeUI);
-  document.getElementById('checkinType-out').addEventListener('change', updateCheckinTypeUI);
-  
-  // 自動選擇建議的打卡類型
-  function autoSelectCheckinType() {
-    const now = new Date();
-    const hour = now.getHours();
+
+  // 註冊事件監聽器
+  document.addEventListener('DOMContentLoaded', function() {
+    // 監聽打卡類型變更事件
+    const checkinInRadio = document.getElementById('checkinType-in');
+    const checkinOutRadio = document.getElementById('checkinType-out');
     
-    // 上午默認上班打卡，下午默認下班打卡
-    if (hour >= 12) {
-      document.getElementById('checkinType-out').checked = true;
-    } else {
-      document.getElementById('checkinType-in').checked = true;
+    if (checkinInRadio && checkinOutRadio) {
+      checkinInRadio.addEventListener('change', updateCheckinTypeUI);
+      checkinOutRadio.addEventListener('change', updateCheckinTypeUI);
     }
     
-    // 更新UI顯示
+    // 初始化
+    initializeLiff();
     updateCheckinTypeUI();
-  }
-  
-  initializeLiff();
-  // 初始加載時自動選擇打卡類型
-  autoSelectCheckinType();
+  });
 </script>
 {% endblock %}
