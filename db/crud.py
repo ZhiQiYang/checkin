@@ -2,12 +2,13 @@
 
 import sqlite3
 from datetime import datetime
+from config import Config  # 添加這一行來導入 Config 類
 
 DB_PATH = 'checkin.db'
 
 def init_db():
     """初始化資料庫，如果表不存在則創建"""
-    conn = sqlite3.connect(Config.DB_PATH)  # 使用Config.DB_PATH
+    conn = sqlite3.connect(Config.DB_PATH)  # 現在可以正常使用
     c = conn.cursor()
     
     # 檢查表是否已存在
