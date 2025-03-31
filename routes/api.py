@@ -10,6 +10,51 @@ from db.crud import get_reminder_setting, update_reminder_setting
 
 api_bp = Blueprint('api', __name__)
 
+import sqlite3
+from datetime import datetime
+from config import Config
+
+# 修復版 API 路由函數
+@api_bp.route('/api/check-today-status', methods=['GET'])
+def check_today_status():
+    """檢查今天的打卡狀態 - 適配舊版前端"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'message': '缺少用戶ID'}), 400
+        
+        # 獲取今天日期
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # 連接數據庫
+        conn = sqlite3.connect(Config.DB_PATH)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        # 檢查今天是否有上班打卡
+        c.execute('''
+            SELECT * FROM checkin_records 
+            WHERE user_id = ? AND date = ? AND checkin_type = ?
+        ''', (user_id, today, '上班'))
+        checkin_in = c.fetchone() is not None
+        
+        # 檢查今天是否有下班打卡
+        c.execute('''
+            SELECT * FROM checkin_records 
+            WHERE user_id = ? AND date = ? AND checkin_type = ?
+        ''', (user_id, today, '下班'))
+        checkin_out = c.fetchone() is not None
+        
+        conn.close()
+        
+        # 返回結果
+        return jsonify({
+            'has_checkin_in': checkin_in,
+            'has_checkin_out': checkin_out
+        })
+    except Exception as e:
+        print(f"檢查今天打卡狀態出錯: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 @api_bp.route('/api/checkin', methods=['POST'])
 def handle_checkin():
     try:
