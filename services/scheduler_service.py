@@ -37,13 +37,13 @@ class ReminderScheduler:
         now = datetime.now()
         # 只在早上6點到早上10點之間檢查
         if 6 <= now.hour <= 10:
-            self.send_reminders('morning')
+            self.send_reminders('上班')
     
     def check_evening_reminders(self):
         now = datetime.now()
         # 只在下午5點到晚上8點之間檢查
         if 17 <= now.hour <= 20:
-            self.send_reminders('evening')
+            self.send_reminders('下班')
     
     def send_reminders(self, reminder_type):
         print(f"[Scheduler] 檢查{reminder_type}提醒")
