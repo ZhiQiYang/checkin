@@ -7,6 +7,7 @@ import sqlite3
 import io
 import csv
 from config import Config
+from utils.timezone import get_date_string
 
 export_bp = Blueprint('export', __name__)
 
@@ -17,7 +18,7 @@ def export_checkin_records():
     date_range = request.args.get('dateRange', '7')
     
     # 處理日期範圍
-    date_to = datetime.now().strftime('%Y-%m-%d')
+    date_to = get_date_string()
     
     if date_range == 'all':
         date_from = None
@@ -59,7 +60,7 @@ def export_text():
         return jsonify({'success': False, 'message': '缺少用戶ID'})
     
     # 處理日期範圍
-    date_to = datetime.now().strftime('%Y-%m-%d')
+    date_to = get_date_string()
     
     if date_range == 'all':
         date_from = None
