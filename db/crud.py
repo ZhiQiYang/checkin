@@ -3,6 +3,7 @@ import sqlite3
 from datetime import datetime
 from contextlib import contextmanager
 from config import Config
+from utils.timezone import get_date_string
 
 # 數據庫路徑
 DB_PATH = Config.DB_PATH
@@ -218,7 +219,7 @@ def save_checkin(user_id, name, location, note=None, latitude=None, longitude=No
             c = conn.cursor()
 
             # 取得今天日期
-            today = datetime.now().strftime('%Y-%m-%d')
+            today = get_date_string()
             
             # 先檢查是否已有相同類型的打卡記錄
             c.execute('SELECT * FROM checkin_records WHERE user_id = ? AND date = ? AND checkin_type = ?', 
