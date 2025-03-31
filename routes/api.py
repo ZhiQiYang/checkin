@@ -132,12 +132,12 @@ def test_reminder():
     data = request.json
     user_id = data.get('userId')
     name = data.get('name', '用戶')
-    reminder_type = data.get('type', 'morning')
+    reminder_type = data.get('type', '上班')
     
     if not user_id:
         return jsonify({'success': False, 'message': '缺少用戶ID'}), 400
     
-    if reminder_type == 'morning':
+    if reminder_type == '上班':
         message = f"⏰ 測試 - {name}，早安！您今天還沒有上班打卡，請記得打卡。"
     else:
         message = f"⏰ 測試 - {name}，下班時間到了！您今天還沒有下班打卡，請記得打卡。"
