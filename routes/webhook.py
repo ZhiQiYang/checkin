@@ -7,6 +7,7 @@ import requests
 from services.notification_service import send_reply, send_checkin_notification, send_line_message_to_group
 from services.checkin_service import quick_checkin
 from services.group_service import save_group_message
+import traceback
 from config import Config
 
 webhook_bp = Blueprint('webhook', __name__)
@@ -517,33 +518,30 @@ def send_test_message():
 
 def handle_quick_checkin(event, reply_token, checkin_type="上班"):
     try:
-        print(f"執行快速打卡: {checkin_type}")
         user_id = event['source'].get('userId')
         if not user_id:
             send_reply(reply_token, "無法獲取用戶信息，請使用 LIFF 頁面打卡")
             return
             
-        # 使用靜態用戶名進行測試
-        display_name = "用戶" 
+        # 嘗試獲取用戶資料
+        display_name = "未知用戶" # 設置預設值
         
-        # 獲取用戶資料 - 添加詳細日誌
+        # 獲取用戶資料 - 添加詳細日誌                                                                                                                            
         try:
-            print(f"嘗試獲取用戶資料: {user_id}")
             profile_response = requests.get(
                 f'https://api.line.me/v2/bot/profile/{user_id}',
                 headers={'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'}
             )
-            print(f"獲取用戶資料響應狀態: {profile_response.status_code}")
             
             if profile_response.status_code == 200:
                 profile = profile_response.json()
                 display_name = profile.get('displayName', '未知用戶')
                 print(f"獲取到用戶名稱: {display_name}")
             else:
-                print(f"獲取用戶資料失敗: {profile_response.text}")
+                app.logger.error(f"獲取用戶資料失敗: {profile_response.text}")
         except Exception as e:
-            print(f"獲取用戶資料錯誤詳情: {str(e)}")
-            import traceback
+            app.logger.error(f"獲取用戶資料錯誤: {str(e)}", exc_info=True)
+            
             print(traceback.format_exc())
         
         # 執行打卡前記錄
