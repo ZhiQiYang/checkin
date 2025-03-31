@@ -1,16 +1,20 @@
-# 新文件 services/scheduler_service.py
+# 修改 services/scheduler_service.py
 
 import threading
 import time
 import schedule
 from datetime import datetime
+import pytz  # 添加 pytz 庫來處理時區
 from db.crud import get_users_needing_reminder, log_reminder
 from services.notification_service import send_line_notification
+from config import Config  # 引入配置
 
 class ReminderScheduler:
     def __init__(self):
         self.is_running = False
         self.thread = None
+        # 設定默認時區為台灣時區（可從配置文件中獲取）
+        self.timezone = pytz.timezone(Config.TIMEZONE if hasattr(Config, 'TIMEZONE') else 'Asia/Taipei')
     
     def start(self):
         if self.is_running:
@@ -26,27 +30,32 @@ class ReminderScheduler:
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
         
-        print("[Scheduler] 提醒排程服務已啟動")
+        print(f"[Scheduler] 提醒排程服務已啟動，使用時區: {self.timezone}")
     
     def run(self):
         while self.is_running:
             schedule.run_pending()
             time.sleep(60)  # 每分鐘檢查一次排程任務
     
+    def get_local_time(self):
+        """獲取當前的本地時間（考慮時區）"""
+        utc_now = datetime.now(pytz.utc)
+        return utc_now.astimezone(self.timezone)
+    
     def check_morning_reminders(self):
-        now = datetime.now()
+        now = self.get_local_time()
         # 只在早上6點到早上10點之間檢查
         if 6 <= now.hour <= 10:
             self.send_reminders('上班')
     
     def check_evening_reminders(self):
-        now = datetime.now()
+        now = self.get_local_time()
         # 只在下午5點到晚上8點之間檢查
         if 17 <= now.hour <= 20:
             self.send_reminders('下班')
     
     def send_reminders(self, reminder_type):
-        print(f"[Scheduler] 檢查{reminder_type}提醒")
+        print(f"[Scheduler] 檢查{reminder_type}提醒，當前時間: {self.get_local_time().strftime('%Y-%m-%d %H:%M:%S %Z')}")
         users = get_users_needing_reminder(reminder_type)
         
         for user in users:
