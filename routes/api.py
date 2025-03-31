@@ -101,3 +101,50 @@ def test_reminder():
         'success': success,
         'message': '測試提醒已發送' if success else '發送測試提醒失敗'
     })
+# 在 routes/api.py 中添加新的API端點來檢查今日打卡狀態
+
+@api_bp.route('/api/checkin/status', methods=['GET'])
+def get_checkin_status():
+    try:
+        user_id = request.args.get('userId')
+        if not user_id:
+            return jsonify({'success': False, 'message': '缺少用戶ID'}), 400
+        
+        # 獲取今天日期
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # 連接數據庫
+        conn = sqlite3.connect(Config.DB_PATH)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        # 查詢今天的打卡記錄
+        c.execute('''
+            SELECT checkin_type, time 
+            FROM checkin_records 
+            WHERE user_id = ? AND date = ?
+            ORDER BY time ASC
+        ''', (user_id, today))
+        
+        records = c.fetchall()
+        conn.close()
+        
+        # 構建打卡狀態
+        checkin_status = {
+            '上班': None,
+            '下班': None
+        }
+        
+        for record in records:
+            checkin_type = record['checkin_type']
+            if checkin_type in checkin_status:
+                checkin_status[checkin_type] = record['time']
+        
+        return jsonify({
+            'success': True,
+            'date': today,
+            'status': checkin_status
+        })
+    except Exception as e:
+        print(f"獲取打卡狀態出錯: {str(e)}")
+        return jsonify({'success': False, 'message': f'獲取打卡狀態失敗: {str(e)}'}), 500
