@@ -255,7 +255,7 @@ def get_users_needing_reminder(reminder_type):
     is_weekend = now.weekday() >= 5  # 5=Saturday, 6=Sunday
     
     # 獲取今天有特定類型提醒的用戶列表
-    time_field = 'morning_time' if reminder_type == 'morning' else 'evening_time'
+    time_field = 'morning_time' if reminder_type == '上班' else 'evening_time'
     
     c.execute(f'''
         SELECT r.user_id, r.{time_field}, u.name, u.display_name
@@ -270,13 +270,11 @@ def get_users_needing_reminder(reminder_type):
     users_to_remind = []
     
     for user in potential_users:
-        # 檢查今天是否已經打卡（上班提醒）或（下班提醒）
-        checkin_type = 'morning' if reminder_type == 'morning' else 'evening'
-        
+        # 檢查今天是否已經打卡
         c.execute('''
             SELECT * FROM checkin_records
             WHERE user_id = ? AND date = ? AND checkin_type = ?
-        ''', (user['user_id'], today, checkin_type))
+        ''', (user['user_id'], today, reminder_type))
         
         if c.fetchone() is None:
             # 檢查今天是否已經發送過提醒
