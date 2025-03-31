@@ -52,7 +52,7 @@ class ReminderScheduler:
         for user in users:
             try:
                 # 根據提醒類型準備消息
-                if reminder_type == 'morning':
+                if reminder_type == '上班':
                     message = f"⏰ {user['name']}，早安！您今天還沒有上班打卡，請記得打卡。"
                 else:
                     message = f"⏰ {user['name']}，下班時間到了！您今天還沒有下班打卡，請記得打卡。"
