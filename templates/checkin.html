@@ -153,61 +153,80 @@
   }
 
   // 檢查今日打卡狀態
-  async function checkTodayCheckinStatus() {
-    try {
-      const userId = document.getElementById("userId").value;
-      if (!userId) return; // 如果還沒有獲取到用戶ID，就不檢查
-      
-      const response = await fetch(`/api/checkin/status?userId=${userId}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        const statusMessage = document.getElementById("status-message");
-        const statusHtml = [];
-        
-        // 檢查上班打卡狀態
-        if (data.status['上班']) {
-          document.getElementById("checkinType-in").disabled = true;
-          statusHtml.push(`今天已完成上班打卡（${data.status['上班']}）`);
-        }
-        
-        // 檢查下班打卡狀態
-        if (data.status['下班']) {
-          document.getElementById("checkinType-out").disabled = true;
-          statusHtml.push(`今天已完成下班打卡（${data.status['下班']}）`);
-        }
-        
-        // 如果兩種打卡都完成了
-        if (data.status['上班'] && data.status['下班']) {
-          statusMessage.className = "alert alert-success";
-          statusMessage.innerHTML = `<strong>🎉 今天的上班和下班打卡都已完成！</strong>`;
-          document.getElementById("submitBtn").disabled = true;
-        } 
-        // 如果上班已打卡但下班未打卡，自動選擇下班打卡
-        else if (data.status['上班'] && !data.status['下班']) {
-          document.getElementById("checkinType-out").checked = true;
-          statusMessage.className = "alert alert-info";
-          statusMessage.innerHTML = `<strong>✅ 已完成上班打卡，可以進行下班打卡</strong>`;
-          updateCheckinTypeUI();
-        }
-        // 如果沒有上班打卡，禁用下班打卡選項
-        else if (!data.status['上班']) {
-          document.getElementById("checkinType-in").checked = true;
-          document.getElementById("checkinType-out").disabled = true;
-          statusMessage.className = "alert alert-warning";
-          statusMessage.innerHTML = `<strong>⚠️ 請先完成上班打卡，才能進行下班打卡</strong>`;
-          updateCheckinTypeUI();
-        }
-      } else {
-        document.getElementById("status-message").className = "alert alert-warning";
-        document.getElementById("status-message").innerHTML = `<strong>⚠️ 無法取得打卡狀態，請重新載入頁面</strong>`;
-      }
-    } catch (error) {
-      console.error("檢查打卡狀態失敗:", error);
-      document.getElementById("status-message").className = "alert alert-danger";
-      document.getElementById("status-message").innerHTML = `<strong>❌ 檢查打卡狀態失敗</strong>`;
+  // 修復 checkTodayCheckinStatus 函數
+async function checkTodayCheckinStatus() {
+  try {
+    const userId = document.getElementById("userId").value;
+    if (!userId) {
+      console.log("尚未獲取用戶ID，跳過檢查");
+      return; // 如果還沒有獲取到用戶ID，就不檢查
     }
+    
+    console.log("正在檢查打卡狀態，用戶ID: " + userId);
+    
+    // 改用 /api/checkin/status 端點
+    const response = await fetch(`/api/checkin/status?userId=${userId}`);
+    const data = await response.json();
+    
+    console.log("打卡狀態API回應:", data);
+    
+    const statusMessage = document.getElementById("status-message");
+    
+    if (data.success) {
+      console.log("成功獲取打卡狀態");
+      // 檢查上班打卡狀態
+      const hasCheckinIn = data.status && data.status['上班'];
+      const hasCheckinOut = data.status && data.status['下班'];
+      
+      console.log("上班打卡狀態:", hasCheckinIn);
+      console.log("下班打卡狀態:", hasCheckinOut);
+      
+      // 如果兩種打卡都完成了
+      if (hasCheckinIn && hasCheckinOut) {
+        console.log("今天上班和下班都已打卡");
+        statusMessage.className = "alert alert-success";
+        statusMessage.innerHTML = '<strong>🎉 今天的上班和下班打卡都已完成！</strong>';
+        
+        document.getElementById("checkinType-in").disabled = true;
+        document.getElementById("checkinType-out").disabled = true;
+        document.getElementById("submitBtn").disabled = true;
+      } 
+      // 如果上班已打卡但下班未打卡，自動選擇下班打卡
+      else if (hasCheckinIn && !hasCheckinOut) {
+        console.log("今天已上班打卡，未下班打卡");
+        document.getElementById("checkinType-in").disabled = true;
+        document.getElementById("checkinType-out").disabled = false;
+        document.getElementById("checkinType-out").checked = true;
+        
+        statusMessage.className = "alert alert-info";
+        statusMessage.innerHTML = '<strong>✅ 已完成上班打卡，可以進行下班打卡</strong>';
+      }
+      // 如果沒有上班打卡，禁用下班打卡選項
+      else if (!hasCheckinIn) {
+        console.log("今天尚未上班打卡");
+        document.getElementById("checkinType-in").disabled = false;
+        document.getElementById("checkinType-out").disabled = true;
+        document.getElementById("checkinType-in").checked = true;
+        
+        statusMessage.className = "alert alert-warning";
+        statusMessage.innerHTML = '<strong>⚠️ 請先完成上班打卡，才能進行下班打卡</strong>';
+      }
+      
+      // 更新UI顯示
+      updateCheckinTypeUI();
+      
+    } else {
+      console.error("API返回失敗:", data);
+      statusMessage.className = "alert alert-danger";
+      statusMessage.innerHTML = `<strong>❌ 無法取得打卡狀態</strong><p>${data.message || '請重新載入頁面'}</p>`;
+    }
+  } catch (error) {
+    console.error("檢查打卡狀態出錯:", error);
+    const statusMessage = document.getElementById("status-message");
+    statusMessage.className = "alert alert-danger";
+    statusMessage.innerHTML = `<strong>❌ 檢查打卡狀態失敗</strong><p>${error.message}</p>`;
   }
+}
 
   // 獲取位置
   function getLocation() {
