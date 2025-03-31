@@ -11,6 +11,10 @@ import requests
 import os
 import time
 from config import Config
+import sys
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 os.environ['TZ'] = Config.TIMEZONE
