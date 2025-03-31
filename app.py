@@ -91,7 +91,15 @@ def create_app(config_class=Config):
     
     @app.errorhandler(500)
     def internal_error(error):
-        app.logger.error('服務器錯誤: %s\n%s', str(error), traceback.format_exc())
+        app.logger.error('服務器錯誤: %s', str(error), exc_info=True)
+        
+        # 增加對特定類型異常的處理
+        if isinstance(error, sqlite3.OperationalError):
+            # 數據庫連接問題
+            return "數據庫連接錯誤，系統正在維護中", 500
+        elif isinstance(error, requests.exceptions.RequestException):
+            # LINE API 連接問題
+            return "LINE 服務連接錯誤，請稍後再試", 500
         return "伺服器內部錯誤，請查看日誌獲取詳情", 500
     
     # 啟動保活線程
