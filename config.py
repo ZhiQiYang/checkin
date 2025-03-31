@@ -33,4 +33,4 @@ class Config:
     KEEP_ALIVE_INTERVAL = int(os.environ.get("KEEP_ALIVE_INTERVAL", 300))  # 默認5分鐘
     
     # 時區設置 (默認為台灣時區)
-    TIMEZONE = os.environ.get("TIMEZONE", "Asia/Taipei")
+    TIMEZONE = os.environ.get("TIMEZONE", "Asia/Taipei")  
