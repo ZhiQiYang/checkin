@@ -163,13 +163,50 @@
       body: JSON.stringify(payload)
     })
     .then(res => res.json())
-    .then(data => {
-      document.getElementById("status").innerText = data.message;
-    })
-    .catch(() => {
-      document.getElementById("status").innerText = "❌ 無法送出打卡，請稍後再試";
-    });
+    # 在 templates/checkin.html 中，更新成功訊息以清楚顯示打卡類型和狀態
+
+# 在 submitCheckin 函數中添加以下代碼，替換原有的成功訊息顯示邏輯
+.then(data => {
+  const status = document.getElementById("status");
+  
+  if (data.success) {
+    // 成功打卡
+    const checkinType = document.querySelector('input[name="checkinType"]:checked').value;
+    status.className = "success";
+    status.innerHTML = `
+      <div class="alert alert-success">
+        <strong>✅ ${data.message}</strong>
+        <p class="mt-2 mb-0">您已完成${checkinType}打卡！</p>
+      </div>
+    `;
+    
+    // 可選：禁用已成功的打卡類型按鈕
+    if (checkinType === "上班") {
+      document.getElementById("checkinType-in").disabled = true;
+      document.getElementById("checkinType-out").checked = true;
+      updateCheckinTypeUI(); // 更新UI顯示
+    } else if (checkinType === "下班") {
+      document.getElementById("checkinType-out").disabled = true;
+      // 兩種打卡都完成了，可以顯示一條完成訊息
+      if (document.getElementById("checkinType-in").disabled) {
+        status.innerHTML += `
+          <div class="alert alert-info mt-2">
+            <strong>🎉 太棒了！</strong>
+            <p class="mb-0">您今天的上班和下班打卡都已完成！</p>
+          </div>
+        `;
+      }
+    }
+  } else {
+    // 打卡失敗
+    status.className = "error";
+    status.innerHTML = `
+      <div class="alert alert-danger">
+        <strong>❌ ${data.message}</strong>
+      </div>
+    `;
   }
+})
 
   // 切換打卡類型時更新UI
   function updateCheckinTypeUI() {
