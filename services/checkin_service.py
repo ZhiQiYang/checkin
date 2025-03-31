@@ -33,7 +33,7 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
         # 取得當前日期和時間
         today = utils.timezone.get_date_string()
         time_str = utils.timezone.get_time_string()
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = utils.timezone.get_current_time().strftime("%Y-%m-%d %H:%M:%S")
         
         # 檢查是否已有相同類型的打卡記錄
         if has_checkin_today(user_id, checkin_type, today):
@@ -57,7 +57,7 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
             
     except Exception as e:
         print(f"打卡過程錯誤: {str(e)}")
-        return False, f"處理過程出錯: {str(e)}", datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return False, f"處理過程出錯: {str(e)}", utils.timezone.get_current_time().strftime("%Y-%m-%d %H:%M:%S")
 
 def quick_checkin(user_id, name, checkin_type="上班"):
     """
