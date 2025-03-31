@@ -45,6 +45,7 @@ class ReminderScheduler:
     def check_morning_reminders(self):
         now = self.get_local_time()
         # 只在早上6點到早上10點之間檢查
+        print(f"當前檢查時間: {now}, 時區: {now.tzinfo}")  # 添加這行來調試
         if 6 <= now.hour <= 10:
             self.send_reminders('上班')
     
