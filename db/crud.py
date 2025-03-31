@@ -83,8 +83,10 @@ def get_recent_messages(count=20):
 
 # 修改 db/crud.py 中的 save_checkin 函數
 
+# 修改 db/crud.py 中的 save_checkin 函數
+
 def save_checkin(user_id, name, location, note=None, latitude=None, longitude=None, checkin_type="上班"):
-    """保存打卡記錄到數據庫"""
+    """保存打卡記錄到數據庫，確保打卡順序正確"""
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -92,14 +94,22 @@ def save_checkin(user_id, name, location, note=None, latitude=None, longitude=No
         # 取得今天日期
         today = datetime.now().strftime('%Y-%m-%d')
         
-        # 修改查詢，加入 checkin_type 條件
-        # 這樣只會檢查是否已有相同類型（上班/下班）的打卡記錄
+        # 先檢查是否已有相同類型的打卡記錄
         c.execute('SELECT * FROM checkin_records WHERE user_id = ? AND date = ? AND checkin_type = ?', 
                 (user_id, today, checkin_type))
         
         if c.fetchone():
             conn.close()
             return False, f"今天已經{checkin_type}打卡過了"
+
+        # 如果是下班打卡，檢查今天是否已經有上班打卡
+        if checkin_type == "下班":
+            c.execute('SELECT * FROM checkin_records WHERE user_id = ? AND date = ? AND checkin_type = ?', 
+                    (user_id, today, "上班"))
+            
+            if not c.fetchone():
+                conn.close()
+                return False, "請先完成上班打卡，才能進行下班打卡"
 
         now = datetime.now()
         time_str = now.strftime('%H:%M:%S')
