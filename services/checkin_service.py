@@ -1,6 +1,8 @@
 # services/checkin_service.py
 from datetime import datetime
 from db.crud import save_checkin
+import sqlite3
+from db.crud import DB_PATH
 
 # 更新 services/checkin_service.py 中的 process_checkin 函數
 def process_checkin(user_id, name, location, note=None, latitude=None, longitude=None, checkin_type="上班"):
