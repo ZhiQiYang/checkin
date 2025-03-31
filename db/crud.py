@@ -1,14 +1,15 @@
 # db/crud.py
-
 import sqlite3
 from datetime import datetime
-from config import Config  # 添加這一行來導入 Config 類
+from config import Config
 
-DB_PATH = 'checkin.db'
+# 使用 Config 中的設置初始化本地變數
+DB_PATH = Config.DB_PATH
 
 def init_db():
     """初始化資料庫，如果表不存在則創建"""
-    conn = sqlite3.connect(Config.DB_PATH)  # 現在可以正常使用
+    conn = sqlite3.connect(DB_PATH)
+    # 其餘代碼...
     c = conn.cursor()
     
     # 檢查表是否已存在
