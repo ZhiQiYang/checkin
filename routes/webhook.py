@@ -538,9 +538,9 @@ def handle_quick_checkin(event, reply_token, checkin_type="上班"):
                 display_name = profile.get('displayName', '未知用戶')
                 print(f"獲取到用戶名稱: {display_name}")
             else:
-                app.logger.error(f"獲取用戶資料失敗: {profile_response.text}")
+                print(f"獲取用戶資料失敗: {profile_response.text}")
         except Exception as e:
-            app.logger.error(f"獲取用戶資料錯誤: {str(e)}", exc_info=True)
+            print(f"獲取用戶資料錯誤: {str(e)}", exc_info=True)
             
             print(traceback.format_exc())
         
