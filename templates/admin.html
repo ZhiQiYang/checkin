@@ -214,7 +214,35 @@
             .catch(error => {
                 console.error('獲取系統資訊失敗:', error);
                 showAlert('error', '獲取系統資訊失敗');
+            });
+    }
+
+    // 發送全群通知
+    document.getElementById('send-broadcast').addEventListener('click', function() {
+        const message = document.getElementById('broadcast-message').value.trim();
+        
+        if (!message) {
+            showAlert('error', '消息不能為空');
+            return;
+        }
+        
+        fetch('/api/admin/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                userId: userId,
+                message: message 
             })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showModal('發送成功', '全群通知已發送');
+                document.getElementById('broadcast-message').value = '';
+            } else {
+                showModal('發送失敗', data.message);
+            }
+        })
         .catch(error => {
             console.error('發送全群通知失敗:', error);
             showModal('發送失敗', '操作過程中發生錯誤');
@@ -248,15 +276,6 @@
         $('#resultModal').modal('show');
     }
     
-    // 頁面加載時更新系統資訊
-    document.addEventListener('DOMContentLoaded', function() {
-        updateSystemInfo();
-        
-        // 每30秒自動更新一次系統資訊
-        setInterval(updateSystemInfo, 30000);
-    });
-    }
-    
     // 備份數據庫
     document.getElementById('backup-db').addEventListener('click', function() {
         fetch('/api/admin/backup-db', {
@@ -267,11 +286,6 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showModal('發送成功', '全群通知已發送');
-                document.getElementById('broadcast-message').value = '';
-            } else {
-                showModal('發送失敗', data.message);
-            } {
                 showModal('備份成功', data.message);
             } else {
                 showModal('備份失敗', data.message);
@@ -321,23 +335,12 @@
             });
     });
     
-    // 發送全群通知
-    document.getElementById('send-broadcast').addEventListener('click', function() {
-        const message = document.getElementById('broadcast-message').value.trim();
+    // 頁面加載時更新系統資訊
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSystemInfo();
         
-        if (!message) {
-            showAlert('error', '消息不能為空');
-            return;
-        }
-        
-        fetch('/api/admin/broadcast', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                userId: userId,
-                message: message 
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success)
+        // 每30秒自動更新一次系統資訊
+        setInterval(updateSystemInfo, 30000);
+    });
+</script>
+{% endblock %}
