@@ -4,51 +4,92 @@ import os
 from config import Config
 
 def update_database():
-    """完全重建數據庫結構"""
-    print("開始更新數據庫結構...")
+    """檢查並更新數據庫結構，保留現有數據"""
+    print("檢查數據庫結構...")
     
     try:
-        # 如果數據庫文件存在，先刪除它
-        if os.path.exists(Config.DB_PATH):
-            os.remove(Config.DB_PATH)
-            print("已刪除舊數據庫文件")
+        # 檢查數據庫文件是否存在，如果不存在則創建
+        if not os.path.exists(Config.DB_PATH):
+            print("數據庫文件不存在，創建新數據庫...")
+            conn = sqlite3.connect(Config.DB_PATH)
+            conn.close()
+            print("✅ 創建了新的數據庫文件")
+            return  # 返回，讓 init_db() 處理表的創建
         
-        # 創建新數據庫
+        # 連接到現有數據庫
         conn = sqlite3.connect(Config.DB_PATH)
         cursor = conn.cursor()
         
-        # 創建打卡記錄表
-        cursor.execute('''
-        CREATE TABLE checkin_records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            location TEXT,
-            note TEXT,
-            latitude REAL,
-            longitude REAL,
-            date TEXT NOT NULL,
-            time TEXT NOT NULL,
-            checkin_type TEXT DEFAULT '上班'
-        )
-        ''')
+        # 獲取現有表列表
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        existing_tables = [table[0] for table in cursor.fetchall()]
+        print(f"現有表: {existing_tables}")
         
-        # 創建群組消息表
-        cursor.execute('''
-        CREATE TABLE group_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            user_name TEXT NOT NULL,
-            message TEXT,
-            timestamp TEXT NOT NULL
-        )
-        ''')
+        # 檢查各表結構，如有需要進行更新
+        
+        # 檢查並更新 checkin_records 表
+        if 'checkin_records' in existing_tables:
+            print("檢查 checkin_records 表結構...")
+            cursor.execute("PRAGMA table_info(checkin_records)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            # 如果缺少 checkin_type 列，添加它
+            if 'checkin_type' not in columns:
+                print("添加 checkin_type 列到 checkin_records 表...")
+                cursor.execute("ALTER TABLE checkin_records ADD COLUMN checkin_type TEXT DEFAULT '上班'")
+                print("✅ 已添加 checkin_type 列")
+        
+        # 檢查 users 表，如果不存在則創建
+        if 'users' not in existing_tables:
+            print("創建 users 表...")
+            cursor.execute('''
+                CREATE TABLE users (
+                    user_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    display_name TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            print("✅ 已創建 users 表")
+        
+        # 檢查並創建提醒系統相關表
+        if 'reminder_settings' not in existing_tables:
+            print("創建 reminder_settings 表...")
+            cursor.execute('''
+                CREATE TABLE reminder_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    enabled BOOLEAN DEFAULT 1,
+                    morning_time TEXT DEFAULT '09:00',
+                    evening_time TEXT DEFAULT '18:00',
+                    weekend_enabled BOOLEAN DEFAULT 0,
+                    holiday_enabled BOOLEAN DEFAULT 0,
+                    created_at DATETIME,
+                    updated_at DATETIME,
+                    UNIQUE(user_id)
+                )
+            ''')
+            print("✅ 已創建 reminder_settings 表")
+        
+        if 'reminder_logs' not in existing_tables:
+            print("創建 reminder_logs 表...")
+            cursor.execute('''
+                CREATE TABLE reminder_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    reminder_type TEXT NOT NULL,
+                    sent_at DATETIME,
+                    status TEXT
+                )
+            ''')
+            print("✅ 已創建 reminder_logs 表")
         
         conn.commit()
-        print("✅ 數據庫更新成功！創建了所有必要的表")
+        print("✅ 數據庫結構檢查和更新完成")
         
         conn.close()
         print("數據庫連接已關閉")
         
     except Exception as e:
         print(f"❌ 更新數據庫時出錯: {e}")
+        raise  # 重新拋出異常以便應用程序可以處理
