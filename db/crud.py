@@ -7,7 +7,7 @@ DB_PATH = 'checkin.db'
 
 def init_db():
     """初始化資料庫，如果表不存在則創建"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(Config.DB_PATH)  # 使用Config.DB_PATH
     c = conn.cursor()
     
     # 檢查表是否已存在
@@ -48,18 +48,52 @@ def init_db():
     # 建立用戶表（如果不存在）
     if 'users' not in existing_tables:
         c.execute('''
-            E TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS users (
                 user_id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 display_name TEXT,
-                ed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         print("✅ 創建了 users 表")
     
     # 建立提醒設置表（如果不存在）
-    if 'reminder_settings' not in existing_tables:
+    if 'reminder_settings' not in existing_tables or 'reminder_logs' not in existing_tables:
         create_reminder_tables()
+    
+    conn.commit()
+    conn.close()
+
+def create_reminder_tables():
+    conn = sqlite3.connect(Config.DB_PATH)
+    c = conn.cursor()
+    
+    # 提醒設置表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS reminder_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            enabled INTEGER DEFAULT 1,
+            morning_time TEXT DEFAULT '09:00',
+            evening_time TEXT DEFAULT '18:00',
+            weekend_enabled INTEGER DEFAULT 0,
+            holiday_enabled INTEGER DEFAULT 0,
+            created_at DATETIME,
+            updated_at DATETIME,
+            UNIQUE(user_id)
+        )
+    ''')
+    
+    # 提醒日誌表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS reminder_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            reminder_type TEXT NOT NULL,
+            sent_at DATETIME,
+            status TEXT
+        )
+    ''')
     
     conn.commit()
     conn.close()
