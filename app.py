@@ -7,6 +7,7 @@ from utils.logger import setup_logger
 from routes.export import export_bp
 import traceback
 from services.scheduler_service import reminder_scheduler
+import requests
 
 # 從 update_db.py 導入更新函數
 from db.update_db import update_database
