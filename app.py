@@ -8,7 +8,13 @@ from routes.export import export_bp
 import traceback
 from services.scheduler_service import reminder_scheduler
 import requests
+import os
+import time
+from config import Config
 
+
+os.environ['TZ'] = Config.TIMEZONE
+time.tzset()  # 應用時區變更，只在 Unix/Linux 環境有效
 # 從 update_db.py 導入更新函數
 from db.update_db import update_database
 
