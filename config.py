@@ -16,7 +16,8 @@ class Config:
     GROUP_LIFF_ID = os.environ.get("GROUP_LIFF_ID")
     APP_URL = os.environ.get("APP_URL", "https://checkin-ciqs.onrender.com")
     PORT = int(os.environ.get("PORT", 5000))
-
+    TIMEZONE = os.environ.get("TIMEZONE", "Asia/Taipei")
+    
     # 在 config.py 中
     CHECKIN_FILE = os.environ.get("CHECKIN_FILE", "/tmp/checkin_records.json")
     GROUP_MESSAGES_FILE = os.environ.get("GROUP_MESSAGES_FILE", "/tmp/group_messages.json")
