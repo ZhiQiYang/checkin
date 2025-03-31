@@ -55,6 +55,8 @@ def check_today_status():
     except Exception as e:
         print(f"檢查今天打卡狀態出錯: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
 @api_bp.route('/api/checkin', methods=['POST'])
 def handle_checkin():
     try:
@@ -150,6 +152,7 @@ def test_reminder():
 
 @api_bp.route('/api/checkin/status', methods=['GET'])
 def get_checkin_status():
+    """檢查今天的打卡狀態 - 新版 API"""
     try:
         user_id = request.args.get('userId')
         if not user_id:
