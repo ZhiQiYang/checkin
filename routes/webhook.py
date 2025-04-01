@@ -132,6 +132,22 @@ def webhook():
                         # 打卡報表功能
                         report_url = f"{Config.APP_URL}/personal-history?userId={event['source'].get('userId')}"
                         send_reply(reply_token, f"📊 您的打卡報表：\n{report_url}")
+                    elif command == '今日單字學習':
+                        # 獲取用戶ID
+                        user_id = event['source'].get('userId')
+                        if user_id:
+                            try:
+                                # 獲取當天日期
+                                today_date = get_date_string()
+                                # 獲取用戶今日單字
+                                daily_words = get_daily_words(today_date, user_id)
+                                vocab_message = format_daily_words(daily_words)
+                                send_reply(reply_token, vocab_message)
+                            except Exception as e:
+                                print(f"獲取今日單字學習時出錯: {str(e)}")
+                                send_reply(reply_token, "📚 今日單字學習\n無法獲取單字，請稍後再試\n可能原因：系統故障或數據庫連接問題")
+                        else:
+                            send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
                     elif command == '幫助':
                         # 幫助功能
                         help_text = (
@@ -774,7 +790,7 @@ def handle_quick_checkin(event, reply_token, checkin_type=None):
                 # 獲取每日單詞
                 try:
                     today_date = get_date_string()
-                    daily_words = get_daily_words(today_date)
+                    daily_words = get_daily_words(today_date, user_id)
                     vocab_message = format_daily_words(daily_words)
                     
                     # 組合打卡成功信息和單詞學習
