@@ -4,7 +4,9 @@ from services.export_service import (
     export_checkin_records_to_excel, 
     export_checkin_records_to_pdf,
     prepare_google_sheets_export,
-    create_google_sheets_export
+    create_google_sheets_export,
+    REPORTLAB_AVAILABLE,
+    GOOGLE_API_AVAILABLE
 )
 from datetime import datetime, timedelta
 import os
@@ -53,11 +55,19 @@ def export_form():
     if not user_id:
         return "請從 LINE 應用程式訪問此頁面", 400
     
-    return render_template('export_form.html', user_id=user_id)
+    # 傳遞功能可用性狀態到模板
+    return render_template('export_form.html', 
+                          user_id=user_id,
+                          pdf_available=REPORTLAB_AVAILABLE,
+                          sheets_available=GOOGLE_API_AVAILABLE)
 
 # 新增的 PDF 導出路由
 @export_bp.route('/export/pdf', methods=['GET'])
 def export_pdf():
+    # 檢查 ReportLab 是否可用
+    if not REPORTLAB_AVAILABLE:
+        return jsonify({'success': False, 'message': 'PDF 匯出功能不可用。缺少 ReportLab 庫。'}), 503
+    
     user_id = request.args.get('userId')
     date_range = request.args.get('dateRange', '7')
     
@@ -88,6 +98,10 @@ def export_pdf():
 # 新增 Google Sheets 導出路由（直接導出方式）
 @export_bp.route('/export/google-sheets', methods=['GET'])
 def export_google_sheets():
+    # 檢查 Google API 是否可用
+    if not GOOGLE_API_AVAILABLE:
+        return jsonify({'success': False, 'message': 'Google Sheets 匯出功能不可用。缺少 Google API 庫。'}), 503
+    
     user_id = request.args.get('userId')
     date_range = request.args.get('dateRange', '7')
     

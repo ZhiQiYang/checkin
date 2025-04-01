@@ -52,6 +52,14 @@
         .card-header {
             font-weight: bold;
         }
+        .feature-unavailable {
+            color: #856404;
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -84,20 +92,38 @@
                 <div class="card export-card">
                     <div class="card-header bg-light">PDF 文件格式</div>
                     <div class="card-body">
+                        {% if pdf_available %}
                         <p>匯出為 PDF 文件格式 (.pdf)</p>
                         <button onclick="exportTo('pdf')" class="btn btn-pdf btn-block export-btn">
                             <i class="fas fa-file-pdf"></i> 匯出 PDF
                         </button>
+                        {% else %}
+                        <div class="feature-unavailable">
+                            <i class="fas fa-exclamation-triangle"></i> PDF 匯出功能暫時不可用。
+                        </div>
+                        <button class="btn btn-secondary btn-block export-btn" disabled>
+                            <i class="fas fa-file-pdf"></i> 匯出 PDF（不可用）
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
                 
                 <div class="card export-card">
                     <div class="card-header bg-light">Google Sheets 格式</div>
                     <div class="card-body">
+                        {% if sheets_available %}
                         <p>匯出至 Google 試算表</p>
                         <button onclick="exportTo('sheets')" class="btn btn-sheets btn-block export-btn">
                             <i class="fas fa-table"></i> 匯出至 Google Sheets
                         </button>
+                        {% else %}
+                        <div class="feature-unavailable">
+                            <i class="fas fa-exclamation-triangle"></i> Google Sheets 匯出功能暫時不可用。
+                        </div>
+                        <button class="btn btn-secondary btn-block export-btn" disabled>
+                            <i class="fas fa-table"></i> 匯出至 Google Sheets（不可用）
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>

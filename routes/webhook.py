@@ -4,12 +4,14 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 import json
 import requests
+import re
 from services.notification_service import send_reply, send_checkin_notification, send_line_message_to_group
 from services.checkin_service import quick_checkin
 from services.group_service import save_group_message
 import traceback
 from config import Config
 from utils.timezone import get_datetime_string
+from db.crud import get_reminder_setting, update_reminder_setting
 
 webhook_bp = Blueprint('webhook', __name__)
 
@@ -65,6 +67,54 @@ def webhook():
                     command = text[1:].lower()
                     print(f"收到命令: {command}")  # 添加日誌
                     
+                    # 設置提醒時間命令
+                    # 匹配 "!設定上班提醒 HH:MM" 或 "!设定上班提醒 HH:MM" 格式
+                    set_morning_reminder_match = re.match(r'^設定上班提醒 *(\d{1,2}:\d{2})$', command)
+                    if set_morning_reminder_match:
+                        time_str = set_morning_reminder_match.group(1)
+                        handle_set_reminder(event, reply_token, "morning", time_str)
+                        return 'OK'
+                    
+                    # 匹配 "!設定下班提醒 HH:MM" 或 "!设定下班提醒 HH:MM" 格式
+                    set_evening_reminder_match = re.match(r'^設定下班提醒 *(\d{1,2}:\d{2})$', command)
+                    if set_evening_reminder_match:
+                        time_str = set_evening_reminder_match.group(1)
+                        handle_set_reminder(event, reply_token, "evening", time_str)
+                        return 'OK'
+                    
+                    # 處理設定提醒指令（無時間參數）
+                    if command == '設定提醒':
+                        user_id = event['source'].get('userId')
+                        # 獲取當前提醒設置
+                        settings = get_reminder_setting(user_id)
+                        if settings:
+                            morning_time = settings.get('morning_time', '09:00')
+                            evening_time = settings.get('evening_time', '18:00')
+                            enabled = settings.get('enabled', 1) == 1
+                            weekend_enabled = settings.get('weekend_enabled', 0) == 1
+                            
+                            status = "啟用" if enabled else "停用"
+                            weekend_status = "啟用" if weekend_enabled else "停用"
+                            
+                            # 綜合提醒設置信息
+                            settings_message = (
+                                f"⏰ 當前提醒設置：\n"
+                                f"- 提醒狀態：{status}\n"
+                                f"- 上班提醒時間：{morning_time}\n"
+                                f"- 下班提醒時間：{evening_time}\n"
+                                f"- 週末提醒：{weekend_status}\n\n"
+                                f"您可以使用以下指令修改設置：\n"
+                                f"!設定上班提醒 HH:MM\n"
+                                f"!設定下班提醒 HH:MM\n"
+                                f"或點擊以下連結進行詳細設置：\n"
+                                f"{Config.APP_URL}/reminder-settings?userId={user_id}"
+                            )
+                            
+                            send_reply(reply_token, settings_message)
+                        else:
+                            send_reply(reply_token, "❌ 無法獲取提醒設置，請稍後再試")
+                        return 'OK'
+                    
                     # 打卡命令處理
                     if command == '快速打卡' or command == '上班打卡':
                         handle_quick_checkin(event, reply_token, "上班")
@@ -83,6 +133,9 @@ def webhook():
                             "!下班打卡 - 快速完成下班打卡\n"
                             "!快速打卡 - 快速完成上班打卡（等同於!上班打卡）\n"
                             "!打卡報表 - 查看打卡統計報表\n"
+                            "!設定提醒 - 查看與設定提醒時間\n"
+                            "!設定上班提醒 HH:MM - 設定上班提醒時間\n"
+                            "!設定下班提醒 HH:MM - 設定下班提醒時間\n"
                             "!測試提醒 - 發送測試提醒\n"
                             "!系統狀態 - 查看系統運行狀態\n"
                             "!管理指令 - 顯示管理員指令列表\n"
@@ -516,6 +569,73 @@ def send_test_message():
         })
     except Exception as e:
         return jsonify({"error": str(e)})
+
+def handle_set_reminder(event, reply_token, reminder_type, time_str):
+    """
+    處理設置提醒時間的命令
+    
+    Args:
+        event: 事件數據
+        reply_token: 回覆 token
+        reminder_type: 提醒類型 ('morning' 或 'evening')
+        time_str: 時間字符串，格式為 'HH:MM'
+    """
+    # 獲取用戶 ID
+    user_id = event['source'].get('userId')
+    if not user_id:
+        send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
+        return
+    
+    # 驗證時間格式
+    try:
+        # 確保時間格式正確
+        if not re.match(r'^\d{1,2}:\d{2}$', time_str):
+            send_reply(reply_token, "❌ 時間格式不正確，請使用 HH:MM 格式（例如：09:00 或 18:30）")
+            return
+        
+        # 解析時間
+        hour, minute = map(int, time_str.split(':'))
+        if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+            send_reply(reply_token, "❌ 時間範圍不正確，小時應在 0-23 之間，分鐘應在 0-59 之間")
+            return
+        
+        # 格式化時間（確保格式為 HH:MM）
+        formatted_time = f"{hour:02d}:{minute:02d}"
+    except Exception as e:
+        send_reply(reply_token, f"❌ 時間格式解析錯誤: {str(e)}")
+        return
+    
+    # 獲取當前提醒設置
+    settings = get_reminder_setting(user_id)
+    if not settings:
+        send_reply(reply_token, "❌ 無法獲取提醒設置，請稍後再試")
+        return
+    
+    # 更新提醒設置
+    try:
+        new_settings = dict(settings)
+        
+        # 更新對應類型的時間
+        if reminder_type == "morning":
+            new_settings['morning_time'] = formatted_time
+            time_type = "上班提醒"
+        else:  # evening
+            new_settings['evening_time'] = formatted_time
+            time_type = "下班提醒"
+        
+        # 確保提醒功能開啟
+        new_settings['enabled'] = 1
+        
+        # 更新設置
+        success = update_reminder_setting(user_id, new_settings)
+        
+        if success:
+            send_reply(reply_token, f"✅ {time_type}時間已設置為 {formatted_time}")
+        else:
+            send_reply(reply_token, f"❌ 設置{time_type}時間失敗，請稍後再試")
+    except Exception as e:
+        print(f"設置提醒時間出錯: {str(e)}")
+        send_reply(reply_token, f"❌ 系統錯誤: {str(e)[:30]}...")
 
 def handle_quick_checkin(event, reply_token, checkin_type="上班"):
     try:
