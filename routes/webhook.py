@@ -8,6 +8,7 @@ import re
 from services.notification_service import send_reply, send_reply_raw, send_checkin_notification, send_line_message_to_group
 from services.checkin_service import quick_checkin
 from services.group_service import save_group_message
+from services.vocabulary_service import get_daily_words, format_daily_words
 import traceback
 from config import Config
 from utils.timezone import get_datetime_string, get_current_time, get_date_string
@@ -770,7 +771,19 @@ def handle_quick_checkin(event, reply_token, checkin_type=None):
                 except Exception as e:
                     print(f"發送通知錯誤: {str(e)}")
                 
-                send_reply(reply_token, f"✅ {message}")
+                # 獲取每日單詞
+                try:
+                    today_date = get_date_string()
+                    daily_words = get_daily_words(today_date)
+                    vocab_message = format_daily_words(daily_words)
+                    
+                    # 組合打卡成功信息和單詞學習
+                    combined_message = f"✅ {message}\n\n{vocab_message}"
+                    send_reply(reply_token, combined_message)
+                except Exception as e:
+                    print(f"獲取每日單詞錯誤: {str(e)}")
+                    # 如果獲取單詞失敗，仍然發送原始打卡成功消息
+                    send_reply(reply_token, f"✅ {message}")
             else:
                 send_reply(reply_token, f"❌ {message}")
         

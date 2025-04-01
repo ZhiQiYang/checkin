@@ -81,6 +81,14 @@ def create_app(config_class=Config):
     # 初始化資料庫（如果表不存在則創建）
     init_db()
     
+    # 初始化詞彙數據庫
+    try:
+        from services.vocabulary_service import init_vocabulary_database
+        init_vocabulary_database()
+        print("✅ 詞彙數據庫初始化完成")
+    except Exception as e:
+        print(f"❌ 詞彙數據庫初始化失敗: {e}")
+    
     # 註冊藍圖
     from routes.api import api_bp
     from routes.webhook import webhook_bp

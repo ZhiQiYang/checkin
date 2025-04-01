@@ -84,6 +84,46 @@ def update_database():
             ''')
             print("✅ 已創建 reminder_logs 表")
         
+        # 檢查並創建詞彙相關表
+        if 'vocabulary' not in existing_tables:
+            print("創建 vocabulary 表...")
+            cursor.execute('''
+                CREATE TABLE vocabulary (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    english_word TEXT UNIQUE NOT NULL,
+                    chinese_translation TEXT NOT NULL,
+                    difficulty INTEGER DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            print("✅ 已創建 vocabulary 表")
+            
+            # 這裡可以初始化一些基本詞彙
+            from services.vocabulary_service import DEFAULT_VOCABULARY
+            for word, translation in DEFAULT_VOCABULARY:
+                try:
+                    cursor.execute(
+                        "INSERT INTO vocabulary (english_word, chinese_translation) VALUES (?, ?)",
+                        (word, translation)
+                    )
+                except sqlite3.IntegrityError:
+                    # 忽略重複詞彙
+                    pass
+            
+            print(f"✅ 已嘗試插入 {len(DEFAULT_VOCABULARY)} 個預設詞彙")
+        
+        if 'word_usage' not in existing_tables:
+            print("創建 word_usage 表...")
+            cursor.execute('''
+                CREATE TABLE word_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT NOT NULL,
+                    word_ids TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            print("✅ 已創建 word_usage 表")
+        
         conn.commit()
         print("✅ 數據庫結構檢查和更新完成")
         
