@@ -4,59 +4,71 @@ import random
 from datetime import datetime, timedelta
 from config import Config
 
-# 預設單詞庫，包含單詞和中文翻譯（這只是一個起始集，實際應用中應該有更多單詞）
+# 更新為較高難度的詞彙庫，包含單詞、中文翻譯和難度級別（1-基礎, 2-中級, 3-高級）
 DEFAULT_VOCABULARY = [
-    ("abandon", "放棄"),
-    ("ability", "能力"),
-    ("absence", "缺席"),
-    ("absorb", "吸收"),
-    ("abstract", "抽象的"),
-    ("academic", "學術的"),
-    ("accept", "接受"),
-    ("access", "訪問"),
-    ("accident", "事故"),
-    ("accommodate", "容納"),
-    ("accomplish", "完成"),
-    ("account", "帳戶"),
-    ("accurate", "精確的"),
-    ("achieve", "達成"),
-    ("acknowledge", "承認"),
-    ("acquire", "獲得"),
-    ("adapt", "適應"),
-    ("add", "添加"),
-    ("address", "地址"),
-    ("adequate", "足夠的"),
-    ("adjust", "調整"),
-    ("administration", "管理"),
-    ("admire", "欽佩"),
-    ("admit", "承認"),
-    ("adolescent", "青少年"),
-    ("adopt", "採用"),
-    ("advance", "前進"),
-    ("advantage", "優勢"),
-    ("adventure", "冒險"),
-    ("advertise", "廣告"),
-    ("advice", "建議"),
-    ("affect", "影響"),
-    ("afford", "負擔得起"),
-    ("afraid", "害怕的"),
-    ("afternoon", "下午"),
-    ("again", "再次"),
-    ("against", "反對"),
-    ("age", "年齡"),
-    ("agency", "機構"),
-    ("agenda", "議程"),
-    ("aggressive", "積極的"),
-    ("agree", "同意"),
-    ("agriculture", "農業"),
-    ("ahead", "向前"),
-    ("aid", "援助"),
-    ("aim", "目標"),
-    ("air", "空氣"),
-    ("aircraft", "飛機"),
-    ("airline", "航空公司"),
-    ("airport", "機場"),
-    # 在實際項目中可添加更多單詞...
+    # 中級詞彙 (難度2)
+    ("abundant", "豐富的", 2),
+    ("accommodate", "容納；適應", 2),
+    ("acquisition", "獲得；收購", 2),
+    ("advocate", "提倡；擁護", 2),
+    ("aesthetic", "美學的；審美的", 2),
+    ("aggravate", "加重；惡化", 2),
+    ("alleviate", "減輕；緩和", 2),
+    ("ambiguous", "模糊的；不明確的", 2),
+    ("ambitious", "有雄心的；野心勃勃的", 2),
+    ("analogous", "類似的；相似的", 2),
+    ("analyze", "分析；解析", 2),
+    ("anomaly", "異常；反常", 2),
+    ("anticipate", "預期；預料", 2),
+    ("apathy", "冷漠；無興趣", 2),
+    ("apparatus", "儀器；裝置", 2),
+    ("apparent", "明顯的；表面上的", 2),
+    ("apprehensive", "憂慮的；擔心的", 2),
+    ("articulate", "清晰表達的；發音清晰的", 2),
+    ("assertion", "斷言；聲明", 2),
+    ("assess", "評估；評價", 2),
+    ("assimilate", "同化；吸收", 2),
+    ("assumption", "假設；假定", 2),
+    ("attain", "達到；獲得", 2),
+    ("attribute", "屬性；特質", 2),
+    ("augment", "增加；擴大", 2),
+    ("authentic", "真實的；可靠的", 2),
+    ("autonomy", "自主；自治", 2),
+    ("bias", "偏見；偏向", 2),
+    ("brevity", "簡潔；簡短", 2),
+    ("catalyst", "催化劑；促進因素", 2),
+    
+    # 高級詞彙 (難度3)
+    ("capricious", "反覆無常的；任性的", 3),
+    ("clandestine", "秘密的；隱蔽的", 3),
+    ("cognizant", "認識到的；意識到的", 3),
+    ("connotation", "含義；內涵", 3),
+    ("conundrum", "難題；謎語", 3),
+    ("cryptic", "神秘的；含義隱晦的", 3),
+    ("deference", "尊重；敬重", 3),
+    ("deliberate", "深思熟慮的；故意的", 3),
+    ("deleterious", "有害的；有毒的", 3),
+    ("demystify", "揭秘；使明白易懂", 3),
+    ("dichotomy", "二分法；對立", 3),
+    ("didactic", "教導的；說教的", 3),
+    ("disparate", "迥然不同的；不同類的", 3),
+    ("dogmatic", "教條的；武斷的", 3),
+    ("egregious", "極其惡劣的；過分的", 3),
+    ("eloquent", "雄辯的；有說服力的", 3),
+    ("empathy", "同理心；共情", 3),
+    ("empirical", "實證的；經驗的", 3),
+    ("ephemeral", "短暫的；瞬息的", 3),
+    ("esoteric", "深奧的；只有內行才懂的", 3),
+    ("euphemism", "委婉語；婉言", 3),
+    ("exacerbate", "加劇；惡化", 3),
+    ("exemplify", "例證；作為...的典型", 3),
+    ("exorbitant", "過高的；過分的", 3),
+    ("expedite", "加快；促進", 3),
+    ("facetious", "愛開玩笑的；不嚴肅的", 3),
+    ("fallacy", "謬論；錯誤觀念", 3),
+    ("fastidious", "挑剔的；過分講究的", 3),
+    ("fathom", "理解；測量深度", 3),
+    ("fervent", "熱情的；熱烈的", 3),
 ]
 
 def init_vocabulary_database():
@@ -76,7 +88,7 @@ def init_vocabulary_database():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     english_word TEXT UNIQUE NOT NULL,
                     chinese_translation TEXT NOT NULL,
-                    difficulty INTEGER DEFAULT 1,
+                    difficulty INTEGER DEFAULT 2,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
@@ -92,11 +104,19 @@ def init_vocabulary_database():
             ''')
             
             # 插入預設詞彙
-            for word, translation in DEFAULT_VOCABULARY:
-                cursor.execute(
-                    "INSERT INTO vocabulary (english_word, chinese_translation) VALUES (?, ?)",
-                    (word, translation)
-                )
+            for word_data in DEFAULT_VOCABULARY:
+                if len(word_data) == 3:
+                    word, translation, difficulty = word_data
+                    cursor.execute(
+                        "INSERT INTO vocabulary (english_word, chinese_translation, difficulty) VALUES (?, ?, ?)",
+                        (word, translation, difficulty)
+                    )
+                else:
+                    word, translation = word_data
+                    cursor.execute(
+                        "INSERT INTO vocabulary (english_word, chinese_translation) VALUES (?, ?)",
+                        (word, translation)
+                    )
             
             conn.commit()
             print(f"✅ 已初始化詞彙數據庫，插入了 {len(DEFAULT_VOCABULARY)} 個預設單詞")
@@ -133,7 +153,8 @@ def get_daily_words(date=None):
                 if word:
                     words.append({
                         'english': word['english_word'],
-                        'chinese': word['chinese_translation']
+                        'chinese': word['chinese_translation'],
+                        'difficulty': word['difficulty']
                     })
             
             conn.close()
@@ -183,7 +204,8 @@ def get_daily_words(date=None):
                 if word:
                     words.append({
                         'english': word['english_word'],
-                        'chinese': word['chinese_translation']
+                        'chinese': word['chinese_translation'],
+                        'difficulty': word['difficulty']
                     })
             
             conn.commit()
@@ -203,11 +225,12 @@ def format_daily_words(words):
     
     message = "📚 今日單字學習\n"
     for i, word in enumerate(words, 1):
-        message += f"{i}. {word['english']} - {word['chinese']}\n"
+        difficulty_stars = "⭐" * word.get('difficulty', 2)  # 根據難度顯示星級
+        message += f"{i}. {word['english']} - {word['chinese']} {difficulty_stars}\n"
     
     return message.strip()
 
-def add_vocabulary_word(english, chinese, difficulty=1):
+def add_vocabulary_word(english, chinese, difficulty=2):
     """添加新單詞到詞彙庫"""
     try:
         conn = sqlite3.connect(Config.DB_PATH)
