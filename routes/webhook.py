@@ -64,6 +64,22 @@ def webhook():
                 # 始終發送一個基本回覆
                 default_reply = f"收到您的訊息：{text}"
                 
+                # 特殊處理：直接檢查完整命令
+                if text == '!今日單字學習':
+                    user_id = event['source'].get('userId')
+                    if user_id:
+                        try:
+                            today_date = get_date_string()
+                            daily_words = get_daily_words(today_date, user_id)
+                            vocab_message = format_daily_words(daily_words)
+                            send_reply(reply_token, vocab_message)
+                        except Exception as e:
+                            print(f"直接處理「!今日單字學習」時出錯: {str(e)}")
+                            send_reply(reply_token, "📚 今日單字學習\n無法獲取單字，請稍後再試\n可能原因：系統故障或數據庫連接問題")
+                    else:
+                        send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
+                    return 'OK'
+                
                 # 根據消息內容執行不同的業務邏輯
                 if text.startswith('!'):
                     command = text[1:].lower()
@@ -148,6 +164,22 @@ def webhook():
                                 send_reply(reply_token, "📚 今日單字學習\n無法獲取單字，請稍後再試\n可能原因：系統故障或數據庫連接問題")
                         else:
                             send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
+                    elif command in ['單字學習', '學習單字', '今日單字']:  # 添加更多可能的指令別名
+                        # 獲取用戶ID
+                        user_id = event['source'].get('userId')
+                        if user_id:
+                            try:
+                                # 獲取當天日期
+                                today_date = get_date_string()
+                                # 獲取用戶今日單字
+                                daily_words = get_daily_words(today_date, user_id)
+                                vocab_message = format_daily_words(daily_words)
+                                send_reply(reply_token, vocab_message)
+                            except Exception as e:
+                                print(f"獲取今日單字學習時出錯: {str(e)}")
+                                send_reply(reply_token, "📚 今日單字學習\n無法獲取單字，請稍後再試\n可能原因：系統故障或數據庫連接問題")
+                        else:
+                            send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
                     elif command == '幫助':
                         # 幫助功能
                         help_text = (
@@ -156,6 +188,7 @@ def webhook():
                             "!下班打卡 - 快速完成下班打卡\n"
                             "!快速打卡 - 快速完成上班打卡（等同於!上班打卡）\n"
                             "!打卡報表 - 查看打卡統計報表\n"
+                            "!今日單字學習 - 獲取今日英文單字\n"
                             "!設定提醒 - 查看與設定提醒時間\n"
                             "!設定上班提醒 HH:MM - 設定上班提醒時間\n"
                             "!設定下班提醒 HH:MM - 設定下班提醒時間\n"
