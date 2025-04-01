@@ -26,6 +26,32 @@
             margin-top: 30px;
             text-align: center;
         }
+        .export-btn {
+            margin-bottom: 10px;
+        }
+        .export-options {
+            margin-top: 20px;
+        }
+        .btn-excel {
+            background-color: #217346;
+            color: white;
+        }
+        .btn-pdf {
+            background-color: #F40F02;
+            color: white;
+        }
+        .btn-sheets {
+            background-color: #0F9D58;
+            color: white;
+        }
+        .export-card {
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .card-header {
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -33,26 +59,83 @@
         <h1 class="text-center mb-4">匯出打卡記錄</h1>
         
         <div class="export-form">
-            <form id="exportForm" action="/export/checkin-records" method="get">
-                <input type="hidden" name="userId" value="{{ user_id }}">
-                
-                <div class="form-group">
-                    <label for="dateRange">選擇時間範圍：</label>
-                    <select id="dateRange" name="dateRange" class="form-control">
-                        <option value="7">最近一週</option>
-                        <option value="30">最近一個月</option>
-                        <option value="90">最近三個月</option>
-                        <option value="all">所有紀錄</option>
-                    </select>
+            <div class="form-group">
+                <label for="dateRange">選擇時間範圍：</label>
+                <select id="dateRange" name="dateRange" class="form-control">
+                    <option value="7">最近一週</option>
+                    <option value="30">最近一個月</option>
+                    <option value="90">最近三個月</option>
+                    <option value="all">所有紀錄</option>
+                </select>
+                <input type="hidden" id="userId" value="{{ user_id }}">
+            </div>
+            
+            <div class="export-options">
+                <div class="card export-card">
+                    <div class="card-header bg-light">Microsoft Excel 格式</div>
+                    <div class="card-body">
+                        <p>匯出為 Excel 表格格式 (.xlsx)</p>
+                        <button onclick="exportTo('excel')" class="btn btn-excel btn-block export-btn">
+                            <i class="fas fa-file-excel"></i> 匯出 Excel
+                        </button>
+                    </div>
                 </div>
                 
-                <button type="submit" class="btn btn-primary btn-block">匯出 Excel</button>
-            </form>
+                <div class="card export-card">
+                    <div class="card-header bg-light">PDF 文件格式</div>
+                    <div class="card-body">
+                        <p>匯出為 PDF 文件格式 (.pdf)</p>
+                        <button onclick="exportTo('pdf')" class="btn btn-pdf btn-block export-btn">
+                            <i class="fas fa-file-pdf"></i> 匯出 PDF
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card export-card">
+                    <div class="card-header bg-light">Google Sheets 格式</div>
+                    <div class="card-body">
+                        <p>匯出至 Google 試算表</p>
+                        <button onclick="exportTo('sheets')" class="btn btn-sheets btn-block export-btn">
+                            <i class="fas fa-table"></i> 匯出至 Google Sheets
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <div class="form-footer">
             <a href="javascript:history.back()" class="btn btn-secondary">返回</a>
         </div>
     </div>
+    
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script>
+        function exportTo(type) {
+            const userId = document.getElementById('userId').value;
+            const dateRange = document.getElementById('dateRange').value;
+            let url = '';
+            
+            switch(type) {
+                case 'excel':
+                    url = `/export/checkin-records?userId=${userId}&dateRange=${dateRange}`;
+                    break;
+                case 'pdf':
+                    url = `/export/pdf?userId=${userId}&dateRange=${dateRange}`;
+                    break;
+                case 'sheets':
+                    // 對於 Google Sheets，我們可以直接導出或提供數據給前端處理
+                    url = `/export/google-sheets?userId=${userId}&dateRange=${dateRange}`;
+                    // 對於直接匯出，可以打開新窗口而不是直接下載
+                    window.open(url, '_blank');
+                    return; // 提前返回，不要執行下面的 window.location
+                default:
+                    alert('未知的匯出類型');
+                    return;
+            }
+            
+            // 直接導向到匯出 URL（用於下載檔案）
+            window.location.href = url;
+        }
+    </script>
 </body>
 </html>
