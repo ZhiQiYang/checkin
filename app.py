@@ -22,7 +22,48 @@ time.tzset()  # 應用時區變更，只在 Unix/Linux 環境有效
 # 從 update_db.py 導入更新函數
 from db.update_db import update_database
 
+def check_dependencies():
+    """檢查關鍵依賴項的可用性，並記錄狀態"""
+    dependency_status = {}
+    
+    # 檢查 pandas
+    try:
+        import pandas
+        dependency_status["pandas"] = f"可用 (版本: {pandas.__version__})"
+    except ImportError:
+        dependency_status["pandas"] = "不可用"
+    
+    # 檢查 reportlab
+    try:
+        import reportlab
+        dependency_status["reportlab"] = f"可用 (版本: {reportlab.Version})"
+    except ImportError:
+        dependency_status["reportlab"] = "不可用"
+    
+    # 檢查 openpyxl (Excel 支持)
+    try:
+        import openpyxl
+        dependency_status["openpyxl"] = f"可用 (版本: {openpyxl.__version__})"
+    except ImportError:
+        dependency_status["openpyxl"] = "不可用"
+    
+    # 檢查 Google API
+    try:
+        import googleapiclient
+        dependency_status["googleapiclient"] = "可用"
+    except ImportError:
+        dependency_status["googleapiclient"] = "不可用"
+    
+    # 輸出依賴項狀態
+    print("\n=== 系統依賴項狀態 ===")
+    for dep, status in dependency_status.items():
+        print(f"{dep}: {status}")
+    print("=======================\n")
+
 def create_app(config_class=Config):
+    # 檢查依賴項狀態
+    check_dependencies()
+    
     app = Flask(__name__)
     app.config.from_object(config_class)
     

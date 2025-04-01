@@ -6,70 +6,100 @@ import sqlite3
 import io
 from config import Config
 from flask import current_app
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib import colors
 import time
 import json
 
-# 修改 services/export_service.py
+# 嘗試導入 reportlab，如果失敗則設置標誌
+try:
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib import colors
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
+    print("Warning: ReportLab not available. PDF export will be disabled.")
 
-def export_checkin_records_to_excel(user_id=None, date_from=None, date_to=None):
-    """
-    匯出打卡記錄到 Excel 缓冲區
-    """
+# 嘗試導入 Google API 相關包，如果失敗則設置標誌
+try:
+    from googleapiclient.discovery import build
+    from google.oauth2 import service_account
+    GOOGLE_API_AVAILABLE = True
+except ImportError:
+    GOOGLE_API_AVAILABLE = False
+    print("Warning: Google API packages not available. Google Sheets export will be disabled.")
+
+# 原有的 Excel 導出功能
+def export_checkin_records_to_excel(user_id, date_from=None, date_to=None):
+    # 從數據庫獲取打卡記錄
     conn = sqlite3.connect(Config.DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
     
-    # 構建SQL查詢
-    query = "SELECT * FROM checkin_records"
-    params = []
-    
-    conditions = []
-    if user_id:
-        conditions.append("user_id = ?")
-        params.append(user_id)
+    query_params = [user_id]
+    query = '''
+        SELECT cr.id, cr.user_id, cr.name, cr.location, cr.note, 
+               cr.latitude, cr.longitude, cr.date, cr.time, cr.checkin_type
+        FROM checkin_records cr
+        WHERE cr.user_id = ?
+    '''
     
     if date_from:
-        conditions.append("date >= ?")
-        params.append(date_from)
+        query += ' AND cr.date >= ?'
+        query_params.append(date_from)
     
     if date_to:
-        conditions.append("date <= ?")
-        params.append(date_to)
+        query += ' AND cr.date <= ?'
+        query_params.append(date_to)
     
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
+    query += ' ORDER BY cr.date DESC, cr.time DESC'
     
-    query += " ORDER BY date DESC, time DESC"
-    
-    # 讀取數據
-    df = pd.read_sql_query(query, conn, params=params)
+    c.execute(query, query_params)
+    results = c.fetchall()
     conn.close()
     
-    if df.empty:
+    if not results:
         return None
     
-    # 使用BytesIO而不是文件
+    # 將結果轉換為 DataFrame
+    records = []
+    for row in results:
+        record = {}
+        for key in row.keys():
+            record[key] = row[key]
+        records.append(record)
+    
+    df = pd.DataFrame(records)
+    
+    # 重命名欄位
+    column_mapping = {
+        'id': '序號',
+        'user_id': '用戶ID',
+        'name': '姓名',
+        'location': '位置',
+        'note': '備註',
+        'latitude': '緯度',
+        'longitude': '經度',
+        'date': '日期',
+        'time': '時間',
+        'checkin_type': '打卡類型'
+    }
+    df = df.rename(columns=column_mapping)
+    
+    # 創建 Excel 文件
     output = io.BytesIO()
-    
-    # 寫入Excel到內存緩衝區
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='打卡記錄')
-        
-        # 自動調整列寬
-        worksheet = writer.sheets['打卡記錄']
-        for i, col in enumerate(df.columns):
-            max_length = max(df[col].astype(str).map(len).max(), len(col)) + 2
-            worksheet.column_dimensions[chr(65 + i)].width = max_length
+        df.to_excel(writer, sheet_name='打卡記錄', index=False)
     
-    # 將指針移動到開頭
     output.seek(0)
-    
     return output
 
 # 新增 PDF 導出功能
 def export_checkin_records_to_pdf(user_id, date_from=None, date_to=None):
+    # 如果 ReportLab 不可用，返回 None
+    if not REPORTLAB_AVAILABLE:
+        return None
+
     # 從數據庫獲取打卡記錄
     conn = sqlite3.connect(Config.DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -206,10 +236,11 @@ def create_google_sheets_export(data, title=None):
     
     注意：這個功能需要在服務器上配置 Google API 憑證
     """
+    # 如果 Google API 不可用，返回錯誤信息
+    if not GOOGLE_API_AVAILABLE:
+        return {'success': False, 'message': 'Google API 套件未安裝，無法使用 Google Sheets 匯出功能'}
+
     try:
-        from googleapiclient.discovery import build
-        from google.oauth2 import service_account
-        
         # 檢查憑證文件是否存在
         credentials_path = os.environ.get('GOOGLE_CREDENTIALS_FILE', 'credentials.json')
         if not os.path.exists(credentials_path):
