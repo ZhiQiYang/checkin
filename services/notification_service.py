@@ -44,6 +44,34 @@ def send_reply(reply_token, text):
     except Exception as e:
         print(f"[通知錯誤] 回覆訊息失敗: {e}")
 
+def send_reply_raw(reply_token, messages):
+    """
+    發送自定義格式的回覆消息
+    
+    Args:
+        reply_token: LINE 回覆令牌
+        messages: 消息列表，每個元素都是一個符合 LINE API 消息格式的字典
+    """
+    try:
+        response = requests.post(
+            'https://api.line.me/v2/bot/message/reply',
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'
+            },
+            json={
+                'replyToken': reply_token,
+                'messages': messages
+            }
+        )
+        if response.status_code != 200:
+            print(f"[通知錯誤] 回覆消息失敗: {response.status_code} {response.text}")
+            return False
+        return True
+    except Exception as e:
+        print(f"[通知錯誤] 回覆消息失敗: {e}")
+        return False
+
 # 發送LINE個人通知函數
 def send_line_notification(user_id, message):
     """發送LINE個人通知"""

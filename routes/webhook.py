@@ -5,13 +5,14 @@ from datetime import datetime
 import json
 import requests
 import re
-from services.notification_service import send_reply, send_checkin_notification, send_line_message_to_group
+from services.notification_service import send_reply, send_reply_raw, send_checkin_notification, send_line_message_to_group
 from services.checkin_service import quick_checkin
 from services.group_service import save_group_message
 import traceback
 from config import Config
-from utils.timezone import get_datetime_string
+from utils.timezone import get_datetime_string, get_current_time, get_date_string
 from db.crud import get_reminder_setting, update_reminder_setting
+import sqlite3
 
 webhook_bp = Blueprint('webhook', __name__)
 
@@ -121,6 +122,11 @@ def webhook():
                         return 'OK'
                     elif command == '下班打卡':
                         handle_quick_checkin(event, reply_token, "下班")
+                        return 'OK'
+                    elif command == '打卡':
+                        # 智能自動打卡功能 - 自動判斷類型
+                        handle_quick_checkin(event, reply_token)
+                        return 'OK'
                     elif command == '打卡報表':
                         # 打卡報表功能
                         report_url = f"{Config.APP_URL}/personal-history?userId={event['source'].get('userId')}"
@@ -173,9 +179,6 @@ def webhook():
                     elif command == '系統狀態':
                         # 查詢系統狀態
                         try:
-                            import sqlite3
-                            from datetime import datetime
-                            
                             status_text = f"📊 系統狀態報告 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})\n"
                             
                             # 檢查數據庫
@@ -239,10 +242,8 @@ def webhook():
                         send_reply(reply_token, "🔍 系統診斷已啟動，報告將稍後發送")
                         
                         # 異步執行診斷
-                        import threading
                         def run_diagnostic():
                             try:
-                                import requests
                                 diagnostic_response = requests.get(f"{Config.APP_URL}/system-diagnostic")
                                 if diagnostic_response.status_code == 200:
                                     from services.notification_service import send_line_notification
@@ -376,8 +377,6 @@ def webhook_detailed():
 
 @webhook_bp.route('/app-debug', methods=['GET'])
 def app_debug():
-    import sqlite3
-    
     # 收集應用狀態信息
     status = {
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -637,7 +636,7 @@ def handle_set_reminder(event, reply_token, reminder_type, time_str):
         print(f"設置提醒時間出錯: {str(e)}")
         send_reply(reply_token, f"❌ 系統錯誤: {str(e)[:30]}...")
 
-def handle_quick_checkin(event, reply_token, checkin_type="上班"):
+def handle_quick_checkin(event, reply_token, checkin_type=None):
     try:
         user_id = event['source'].get('userId')
         if not user_id:
@@ -662,36 +661,119 @@ def handle_quick_checkin(event, reply_token, checkin_type="上班"):
                 print(f"獲取用戶資料失敗: {profile_response.text}")
         except Exception as e:
             print(f"獲取用戶資料錯誤: {str(e)}", exc_info=True)
-            
             print(traceback.format_exc())
         
-        # 執行打卡前記錄
-        print(f"準備執行打卡: 用戶={user_id}, 名稱={display_name}, 類型={checkin_type}")
+        # 獲取今天日期
+        current_time = get_current_time()
+        today = get_date_string()
         
-        # 直接執行打卡
+        # 檢查今天的打卡狀態
         try:
-            success, message, timestamp = quick_checkin(user_id, display_name, checkin_type)
-            print(f"打卡結果: success={success}, message={message}, time={timestamp}")
+            conn = sqlite3.connect(Config.DB_PATH)
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            
+            # 檢查今天是否有上班打卡
+            c.execute('''
+                SELECT * FROM checkin_records 
+                WHERE user_id = ? AND date = ? AND checkin_type = ?
+            ''', (user_id, today, '上班'))
+            has_checkin_in = c.fetchone() is not None
+            
+            # 檢查今天是否有下班打卡
+            c.execute('''
+                SELECT * FROM checkin_records 
+                WHERE user_id = ? AND date = ? AND checkin_type = ?
+            ''', (user_id, today, '下班'))
+            has_checkin_out = c.fetchone() is not None
+            
+            conn.close()
+            
+            # 根據打卡狀態決定操作
+            if has_checkin_in and has_checkin_out:
+                # 今天已完成上下班打卡
+                send_reply(reply_token, "⚠️ 您今天已經完成上班和下班打卡了")
+                return
+            elif not has_checkin_in:
+                # 今天尚未上班打卡，直接執行上班打卡
+                checkin_type = "上班"
+            elif has_checkin_in and not has_checkin_out:
+                # 已上班打卡但未下班打卡，詢問是否要下班打卡
+                if checkin_type is None:
+                    # 使用 LINE 的按鈕模板提示用戶確認
+                    time_str = current_time.strftime('%H:%M')
+                    confirm_message = {
+                        "type": "template",
+                        "altText": "確認下班打卡",
+                        "template": {
+                            "type": "confirm",
+                            "text": f"現在時間是 {time_str}，您要打卡下班嗎？",
+                            "actions": [
+                                {
+                                    "type": "message",
+                                    "label": "是",
+                                    "text": "!下班打卡"
+                                },
+                                {
+                                    "type": "message",
+                                    "label": "否",
+                                    "text": "取消打卡"
+                                }
+                            ]
+                        }
+                    }
+                    
+                    # 發送確認訊息
+                    send_reply_raw(reply_token, [confirm_message])
+                    return
+                else:
+                    # 如果明確指定了打卡類型，按指定類型處理
+                    pass
+            
         except Exception as e:
-            print(f"quick_checkin 函數錯誤: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-            raise  # 重新拋出異常以便外層捕獲
+            print(f"檢查打卡狀態錯誤: {str(e)}")
+            # 如果錯誤，使用預設的上班打卡
+            if checkin_type is None:
+                checkin_type = "上班"
         
-        if success:
+        # 執行打卡
+        if checkin_type:
+            print(f"準備執行打卡: 用戶={user_id}, 名稱={display_name}, 類型={checkin_type}")
+            
+            # 自動定位信息
+            location = f"自動{checkin_type}打卡"
+            note = f"透過指令自動{checkin_type}打卡"
+            
+            # 執行打卡
             try:
-                # 嘗試發送通知
-                notification = f"✅ {display_name} 已於 {timestamp} 完成{checkin_type}打卡\n📝 備註: 透過指令快速{checkin_type}打卡"
-                notification_sent = send_checkin_notification(display_name, timestamp, f"快速{checkin_type}打卡", 
-                                     note=f"透過指令快速{checkin_type}打卡")
-                print(f"通知發送結果: {notification_sent}")
+                success, message, timestamp = quick_checkin(
+                    user_id=user_id, 
+                    name=display_name, 
+                    checkin_type=checkin_type,
+                    location=location,
+                    note=note
+                )
+                print(f"打卡結果: success={success}, message={message}, time={timestamp}")
             except Exception as e:
-                print(f"發送通知錯誤: {str(e)}")
+                print(f"quick_checkin 函數錯誤: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                raise  # 重新拋出異常以便外層捕獲
             
-            send_reply(reply_token, f"✅ {message}")
-        else:
-            send_reply(reply_token, f"❌ {message}")
-            
+            if success:
+                try:
+                    # 嘗試發送通知
+                    notification = f"✅ {display_name} 已於 {timestamp} 完成{checkin_type}打卡\n📍 備註: 透過指令自動{checkin_type}打卡"
+                    notification_sent = send_checkin_notification(display_name, timestamp, f"自動{checkin_type}打卡", 
+                                        note=f"透過指令自動{checkin_type}打卡")
+                    print(f"通知發送結果: {notification_sent}")
+                except Exception as e:
+                    print(f"發送通知錯誤: {str(e)}")
+                
+                send_reply(reply_token, f"✅ {message}")
+            else:
+                send_reply(reply_token, f"❌ {message}")
+        
     except Exception as e:
         print(f"快速打卡處理錯誤: {str(e)}")
         import traceback
@@ -770,7 +852,6 @@ def diagnose_quick_checkin():
         }
         
         # 檢查數據庫
-        import sqlite3
         try:
             conn = sqlite3.connect('checkin.db')
             cursor = conn.cursor()

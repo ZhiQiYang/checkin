@@ -28,7 +28,7 @@ def create_rich_menu():
             },
             {
                 "bounds": {"x": 1250, "y": 843, "width": 625, "height": 843},
-                "action": {"type": "message", "text": "!快速打卡"}
+                "action": {"type": "message", "text": "!打卡"}
             },
             {
                 "bounds": {"x": 1875, "y": 843, "width": 625, "height": 843},

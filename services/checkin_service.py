@@ -62,7 +62,7 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
         print(f"打卡過程錯誤: {str(e)}")
         return False, f"處理過程出錯: {str(e)}", utils.timezone.get_current_time().strftime("%Y-%m-%d %H:%M:%S")
 
-def quick_checkin(user_id, name, checkin_type="上班"):
+def quick_checkin(user_id, name, checkin_type="上班", location=None, note=None, latitude=None, longitude=None):
     """
     快速打卡功能，使用預設位置信息
     
@@ -70,18 +70,29 @@ def quick_checkin(user_id, name, checkin_type="上班"):
         user_id: 用戶ID
         name: 用戶名稱
         checkin_type: 打卡類型，預設為"上班"
+        location: 可選，位置名稱
+        note: 可選，備註信息
+        latitude: 可選，緯度
+        longitude: 可選，經度
         
     Returns:
         tuple: (success, message, timestamp) 同 process_checkin
     """
-    location = f"快速{checkin_type}打卡"
-    note = f"通過指令快速{checkin_type}打卡"
+    # 如果沒有提供位置信息，使用預設值
+    if location is None:
+        location = f"快速{checkin_type}打卡"
+    
+    # 如果沒有提供備註，使用預設值
+    if note is None:
+        note = f"通過指令快速{checkin_type}打卡"
     
     return process_checkin(
         user_id=user_id,
         name=name,
         location=location,
         note=note,
+        latitude=latitude,
+        longitude=longitude,
         checkin_type=checkin_type
     )
 
