@@ -128,8 +128,8 @@ def init_vocabulary_database():
         if conn:
             conn.close()
 
-def get_daily_words(date=None):
-    """獲取指定日期的三個英文單詞，如果該日期沒有記錄則創建新記錄"""
+def get_daily_words(date=None, user_id=None):
+    """获取指定日期和用户的三个英文单词，如果该日期没有记录则创建新记录"""
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
     
@@ -138,12 +138,40 @@ def get_daily_words(date=None):
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # 檢查今天是否已有單詞記錄
+        # 检查词汇表是否存在
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='vocabulary'")
+        if not cursor.fetchone():
+            print("词汇表不存在，创建表...")
+            init_vocabulary_database()
+        
+        # 检查今天是否已有单词记录
+        if user_id:
+            # 如果提供了用户ID，检查用户词汇表
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_vocabulary'")
+            if cursor.fetchone():
+                cursor.execute("SELECT * FROM user_vocabulary WHERE user_id = ? AND date = ?", (user_id, date))
+                user_record = cursor.fetchone()
+                if user_record:
+                    word_ids = user_record['word_ids'].split(',')
+                    words = []
+                    for word_id in word_ids:
+                        cursor.execute("SELECT * FROM vocabulary WHERE id = ?", (word_id,))
+                        word = cursor.fetchone()
+                        if word:
+                            words.append({
+                                'english': word['english_word'],
+                                'chinese': word['chinese_translation'],
+                                'difficulty': word['difficulty']
+                            })
+                    conn.close()
+                    return words
+        
+        # 检查一般单词记录
         cursor.execute("SELECT * FROM word_usage WHERE date = ?", (date,))
         usage_record = cursor.fetchone()
         
         if usage_record:
-            # 如果有記錄，返回已選單詞
+            # 如果有记录，返回已选单词
             word_ids = usage_record['word_ids'].split(',')
             words = []
             
@@ -160,43 +188,25 @@ def get_daily_words(date=None):
             conn.close()
             return words
         else:
-            # 如果沒有記錄，選擇三個新單詞
-            # 獲取3年內（約1095天）已使用的單詞ID
-            three_years_ago = (datetime.now() - timedelta(days=1095)).strftime("%Y-%m-%d")
-            cursor.execute("SELECT word_ids FROM word_usage WHERE date >= ?", (three_years_ago,))
-            used_records = cursor.fetchall()
-            
-            used_ids = set()
-            for record in used_records:
-                used_ids.update(record['word_ids'].split(','))
-            
-            # 獲取所有單詞ID
+            # 如果没有记录，选择三个新单词
             cursor.execute("SELECT id FROM vocabulary")
             all_ids = [row['id'] for row in cursor.fetchall()]
             
-            # 排除已使用的單詞
-            available_ids = [id for id in all_ids if str(id) not in used_ids]
+            if len(all_ids) < 3:
+                print("词汇数量不足3个，无法生成每日单词")
+                conn.close()
+                return []
             
-            # 如果可用單詞不足，則重用最早使用的單詞
-            if len(available_ids) < 3:
-                print("可用單詞不足3個，重用最早的單詞")
-                cursor.execute("SELECT word_ids FROM word_usage ORDER BY date LIMIT ?", 
-                              (3 - len(available_ids),))
-                oldest_records = cursor.fetchall()
-                for record in oldest_records:
-                    oldest_ids = record['word_ids'].split(',')
-                    available_ids.extend([int(id) for id in oldest_ids])
+            # 随机选择3个单词
+            selected_ids = random.sample(all_ids, 3)
             
-            # 隨機選擇3個單詞
-            selected_ids = random.sample(available_ids, 3)
-            
-            # 保存今天的單詞使用記錄
+            # 保存今天的单词使用记录
             cursor.execute(
                 "INSERT INTO word_usage (date, word_ids) VALUES (?, ?)",
                 (date, ','.join(map(str, selected_ids)))
             )
             
-            # 獲取選中單詞的詳細信息
+            # 获取选中单词的详细信息
             words = []
             for word_id in selected_ids:
                 cursor.execute("SELECT * FROM vocabulary WHERE id = ?", (word_id,))
@@ -213,8 +223,8 @@ def get_daily_words(date=None):
             return words
     
     except Exception as e:
-        print(f"❌ 獲取每日單詞時出錯: {e}")
-        if conn:
+        print(f"❌ 获取每日单词时出错: {e}")
+        if 'conn' in locals() and conn:
             conn.close()
         return []
 
