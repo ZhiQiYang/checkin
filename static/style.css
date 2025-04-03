@@ -1,59 +1,105 @@
-body { 
-    font-family: Arial, sans-serif; 
-    padding: 20px; 
-    max-width: 500px; 
-    margin: 0 auto; 
-    background-color: #f5f5f5;
+/* static/style.css */
+
+/* --- 基礎設定與顏色變數 --- */
+:root {
+    --primary-color: #007bff; /* 主要顏色 (Bootstrap 藍) */
+    --secondary-color: #6c757d; /* 次要顏色 */
+    --success-color: #28a745;  /* 成功顏色 */
+    --danger-color: #dc3545;   /* 危險/錯誤顏色 */
+    --warning-color: #ffc107;  /* 警告顏色 */
+    --info-color: #17a2b8;    /* 資訊顏色 */
+    --light-gray: #f8f9fa;   /* 淺灰 */
+    --dark-gray: #343a40;    /* 深灰 */
+    --body-bg: #f4f7f6;      /* 頁面背景色 */
+    --card-bg: #ffffff;      /* 卡片背景色 */
+    --border-color: #dee2e6; /* 邊框顏色 */
+    --text-color: #212529;   /* 主要文字顏色 */
+    --text-muted: #6c757d;   /* 輔助文字顏色 */
 }
 
-.card { 
-    border: 1px solid #ddd; 
-    border-radius: 8px; 
-    padding: 20px; 
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    background-color: white;
+body {
+    font-family: 'Noto Sans TC', 'Helvetica Neue', Arial, sans-serif; /* 使用更適合中文的字體 */
+    background-color: var(--body-bg);
+    color: var(--text-color);
+    line-height: 1.6;
 }
 
-.profile { 
-    display: flex; 
-    align-items: center; 
-    margin: 20px 0; 
+.container {
+    max-width: 800px; /* 可以稍微加寬 */
+    margin: 2rem auto; /* 上下增加間距 */
+    padding: 1.5rem;
+    background-color: var(--card-bg);
+    border-radius: 12px; /* 更圓潤的邊角 */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.profile img { 
-    width: 60px; 
-    height: 60px; 
-    border-radius: 50%; 
-    margin-right: 15px; 
+h1, h2, h3, h4, h5, h6 {
+    color: var(--dark-gray);
+    margin-bottom: 1rem;
 }
 
-button { 
-    background-color: #06C755; 
-    color: white; 
-    border: none; 
-    padding: 12px; 
-    border-radius: 4px; 
-    font-size: 16px; 
-    cursor: pointer; 
-    width: 100%; 
+/* --- 元件優化 --- */
+.btn {
+    border-radius: 6px; /* 按鈕圓角 */
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out; /* 平滑過渡效果 */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.btn:hover {
+    transform: translateY(-2px); /* 輕微上移效果 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-button:disabled { 
-    background-color: #aaa; 
+.btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
+.btn-success { background-color: var(--success-color); border-color: var(--success-color); }
+/* ... 其他按鈕顏色 ... */
+
+.form-control {
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    padding: 0.6rem 0.8rem;
+}
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* 更明顯的 focus 效果 */
 }
 
-.success { 
-    color: #06C755; 
-    font-weight: bold; 
-    margin-top: 10px;
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
 }
 
-.error { 
-    color: red; 
-    margin-top: 10px;
+.card { /* 優化通用卡片樣式 */
+    border: none; /* 移除預設邊框 */
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+    margin-bottom: 1.5rem;
+}
+.card-header {
+    background-color: var(--light-gray);
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+.card-body {
+    padding: 1.25rem;
 }
 
-h1 {
-    text-align: center;
-    color: #333;
+.alert { /* 提示框樣式 */
+    border-radius: 8px;
+    border-width: 0px; /* 移除邊框 */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 1rem 1.25rem;
+}
+.alert-heading {
+    font-weight: 600;
+}
+.alert .close {
+    font-size: 1.2rem;
+    opacity: 0.7;
+}
+.alert .close:hover {
+    opacity: 1;
 }
