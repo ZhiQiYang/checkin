@@ -47,17 +47,56 @@ def find_db_path():
     return db_path
 
 def init_vocabulary_database():
-    """初始化詞彙數據庫，如果表不存在則創建"""
-    # 這個函數現在只確保表被創建，實際創建邏輯在模型內部
+    """初始化詞彙數據庫，如果表不存在則創建，並添加默認詞彙"""
     try:
         # 確保數據表存在 (調用模型的方法)
         print("ℹ️ 正在檢查並確保詞彙相關數據表存在...")
         Vocabulary.create_table_if_not_exists()
         UserVocabulary.create_table_if_not_exists()
         print("✅ 詞彙數據表檢查/創建完成")
-
+        
+        # 檢查詞彙表是否為空，如果是則添加默認詞彙
+        word_count = Vocabulary.count()
+        print(f"DEBUG: 當前詞彙表數量: {word_count}")
+        
+        if word_count == 0:
+            # 從 models.vocabulary 中導入預設詞彙
+            from models.vocabulary import DEFAULT_VOCABULARY
+            print(f"ℹ️ 詞彙表為空，添加 {len(DEFAULT_VOCABULARY)} 個默認詞彙...")
+            
+            added_count = 0
+            skipped_count = 0
+            for data_tuple in DEFAULT_VOCABULARY:
+                # 解包時處理可能的長度不匹配
+                if len(data_tuple) == 3:
+                    english, chinese, difficulty = data_tuple
+                elif len(data_tuple) == 2:
+                    english, chinese = data_tuple
+                    difficulty = 2  # 默認難度
+                else:
+                    print(f"⚠️ 跳過格式不符的預設詞彙: {data_tuple}")
+                    skipped_count += 1
+                    continue
+                
+                try:
+                    # 使用模型方法添加詞彙
+                    word = Vocabulary.add_word(english, chinese, difficulty)
+                    if word:
+                        added_count += 1
+                except Exception as insert_error:
+                    print(f"⚠️ 添加默認詞彙 '{english}' 時出錯: {insert_error}")
+                    skipped_count += 1
+            
+            # 輸出結果統計
+            final_count = Vocabulary.count()
+            print(f"✅ 默認詞彙初始化完成。新增: {added_count}, 跳過: {skipped_count}, 總計: {final_count}")
+        else:
+            print(f"ℹ️ 詞彙表已有 {word_count} 個單詞，跳過默認詞彙初始化")
+            
     except Exception as e:
         print(f"❌ 初始化詞彙數據庫時出錯: {e}")
+        import traceback
+        print(traceback.format_exc())  # 打印詳細錯誤追蹤
 
 
 def get_daily_words(date=None, user_id=None):

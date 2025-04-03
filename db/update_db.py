@@ -7,17 +7,32 @@ def update_database():
     """檢查並更新數據庫結構，保留現有數據"""
     print("檢查數據庫結構...")
     
-    try:
-        # 檢查數據庫文件是否存在，如果不存在則創建
-        if not os.path.exists(Config.DB_PATH):
-            print("數據庫文件不存在，創建新數據庫...")
-            conn = sqlite3.connect(Config.DB_PATH)
+    db_path = Config.DB_PATH # 使用 Config 中的路徑
+    db_dir = os.path.dirname(db_path)
+
+    # 確保數據庫目錄存在
+    if db_dir and not os.path.exists(db_dir):
+        try:
+            os.makedirs(db_dir)
+            print(f"創建數據庫目錄: {db_dir}")
+        except Exception as e:
+            print(f"無法創建數據庫目錄 {db_dir}: {e}")
+
+    # 檢查數據庫文件是否存在，如果不存在則創建空文件
+    if not os.path.exists(db_path):
+        print(f"數據庫文件 {db_path} 不存在，創建空數據庫...")
+        try:
+            conn = sqlite3.connect(db_path)
             conn.close()
-            print("✅ 創建了新的數據庫文件")
-            return  # 返回，讓 init_db() 處理表的創建
-        
-        # 連接到現有數據庫
-        conn = sqlite3.connect(Config.DB_PATH)
+            print(f"✅ 創建了新的空數據庫文件: {db_path}")
+        except Exception as e:
+            print(f"❌ 創建空數據庫文件 {db_path}
+            失敗: {e}")
+        # 不再 return，讓後續的 Model 檢查來創建表
+    
+    try:
+        # 連接到數據庫
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # 獲取現有表列表
@@ -25,8 +40,7 @@ def update_database():
         existing_tables = [table[0] for table in cursor.fetchall()]
         print(f"現有表: {existing_tables}")
         
-        # 檢查各表結構，如有需要進行更新
-        
+        # --- 只保留結構修改 (ALTER TABLE) 的邏輯 ---
         # 檢查並更新 checkin_records 表
         if 'checkin_records' in existing_tables:
             print("檢查 checkin_records 表結構...")
@@ -36,100 +50,44 @@ def update_database():
             # 如果缺少 checkin_type 列，添加它
             if 'checkin_type' not in columns:
                 print("添加 checkin_type 列到 checkin_records 表...")
-                cursor.execute("ALTER TABLE checkin_records ADD COLUMN checkin_type TEXT DEFAULT '上班'")
-                print("✅ 已添加 checkin_type 列")
-        
-        # 檢查 users 表，如果不存在則創建
-        if 'users' not in existing_tables:
-            print("創建 users 表...")
-            cursor.execute('''
-                CREATE TABLE users (
-                    user_id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    display_name TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            print("✅ 已創建 users 表")
-        
-        # 檢查並創建提醒系統相關表
-        if 'reminder_settings' not in existing_tables:
-            print("創建 reminder_settings 表...")
-            cursor.execute('''
-                CREATE TABLE reminder_settings (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id TEXT NOT NULL,
-                    enabled BOOLEAN DEFAULT 1,
-                    morning_time TEXT DEFAULT '09:00',
-                    evening_time TEXT DEFAULT '18:00',
-                    weekend_enabled BOOLEAN DEFAULT 0,
-                    holiday_enabled BOOLEAN DEFAULT 0,
-                    created_at DATETIME,
-                    updated_at DATETIME,
-                    UNIQUE(user_id)
-                )
-            ''')
-            print("✅ 已創建 reminder_settings 表")
-        
-        if 'reminder_logs' not in existing_tables:
-            print("創建 reminder_logs 表...")
-            cursor.execute('''
-                CREATE TABLE reminder_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id TEXT NOT NULL,
-                    reminder_type TEXT NOT NULL,
-                    sent_at DATETIME,
-                    status TEXT
-                )
-            ''')
-            print("✅ 已創建 reminder_logs 表")
-        
-        # 檢查並創建詞彙相關表
-        if 'vocabulary' not in existing_tables:
-            print("創建 vocabulary 表...")
-            cursor.execute('''
-                CREATE TABLE vocabulary (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    english_word TEXT UNIQUE NOT NULL,
-                    chinese_translation TEXT NOT NULL,
-                    difficulty INTEGER DEFAULT 1,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            print("✅ 已創建 vocabulary 表")
-            
-            # 這裡可以初始化一些基本詞彙
-            from services.vocabulary_service import DEFAULT_VOCABULARY
-            for word, translation in DEFAULT_VOCABULARY:
                 try:
-                    cursor.execute(
-                        "INSERT INTO vocabulary (english_word, chinese_translation) VALUES (?, ?)",
-                        (word, translation)
-                    )
-                except sqlite3.IntegrityError:
-                    # 忽略重複詞彙
-                    pass
+                    cursor.execute("ALTER TABLE checkin_records ADD COLUMN checkin_type TEXT DEFAULT '上班'")
+                    print("✅ 已添加 checkin_type 列")
+                except sqlite3.OperationalError as alter_err:
+                    # 如果並發執行，可能另一進程已添加
+                    if "duplicate column name" in str(alter_err):
+                        print("⚠️ checkin_type 列已存在")
+                    else:
+                        print(f"❌ 添加 checkin_type 列失敗: {alter_err}")
+                        raise alter_err # 拋出以便上層知道
             
-            print(f"✅ 已嘗試插入 {len(DEFAULT_VOCABULARY)} 個預設詞彙")
+            # 添加 created_at 和 updated_at (如果不存在)
+            if 'created_at' not in columns:
+                 print("添加 created_at 列到 checkin_records 表...")
+                 cursor.execute("ALTER TABLE checkin_records ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
+                 print("✅ 已添加 created_at 列")
+            if 'updated_at' not in columns:
+                 print("添加 updated_at 列到 checkin_records 表...")
+                 cursor.execute("ALTER TABLE checkin_records ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP")
+                 print("✅ 已添加 updated_at 列")
         
-        if 'word_usage' not in existing_tables:
-            print("創建 word_usage 表...")
-            cursor.execute('''
-                CREATE TABLE word_usage (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date TEXT NOT NULL,
-                    word_ids TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            print("✅ 已創建 word_usage 表")
+        # --- 移除所有 CREATE TABLE 語句 ---
+        # if 'users' not in existing_tables: ... (刪除)
+        # if 'reminder_settings' not in existing_tables: ... (刪除)
+        # if 'reminder_logs' not in existing_tables: ... (刪除)
+        # if 'vocabulary' not in existing_tables: ... (刪除)
+        # if 'word_usage' not in existing_tables: ... (刪除)
+        # ---
         
         conn.commit()
-        print("✅ 數據庫結構檢查和更新完成")
+        print("✅ 數據庫結構*更新*檢查完成")
         
         conn.close()
-        print("數據庫連接已關閉")
+        print("數據庫連接已關閉 (來自 update_db)")
         
     except Exception as e:
-        print(f"❌ 更新數據庫時出錯: {e}")
-        raise  # 重新拋出異常以便應用程序可以處理
+        print(f"❌ 更新數據庫結構時出錯: {e}")
+        import traceback
+        print(traceback.format_exc())
+        # 考慮是否需要拋出異常，讓 app 啟動失敗
+        # raise e

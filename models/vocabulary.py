@@ -6,6 +6,33 @@ import random
 from datetime import datetime
 from models.base import Model, Database
 
+# 預設詞彙列表，用於初始化詞彙表
+DEFAULT_VOCABULARY = [
+    ("abundant", "豐富的", 2),
+    ("accommodate", "容納；適應", 2),
+    ("acquisition", "獲得；收購", 2),
+    ("advocate", "提倡；擁護", 2),
+    ("aesthetic", "美學的；審美的", 2),
+    ("alleviate", "減輕；緩和", 2),
+    ("ambiguous", "模糊的；不明確的", 2),
+    ("ambitious", "有雄心的；野心勃勃的", 2),
+    ("analogous", "類似的；相似的", 2),
+    ("analyze", "分析；解析", 2),
+    ("capricious", "反覆無常的；任性的", 3),
+    ("clandestine", "秘密的；隱蔽的", 3),
+    ("cognizant", "認識到的；意識到的", 3),
+    ("connotation", "含義；內涵", 3),
+    ("conundrum", "難題；謎語", 3),
+    ("cryptic", "神秘的；含義隱晦的", 3),
+    ("deference", "尊重；敬重", 3),
+    ("deliberate", "深思熟慮的；故意的", 3),
+    ("deleterious", "有害的；有毒的", 3),
+    ("demystify", "揭秘；使明白易懂", 3),
+    ("resilience", "恢復力；彈性", 4),
+    ("endeavor", "努力；嘗試", 4),
+    ("persistence", "堅持；毅力", 4),
+]
+
 class Vocabulary(Model):
     """詞彙模型類"""
     

@@ -1,19 +1,36 @@
 # app.py
+import os
+import sys
+import traceback
+import requests
+import time
+import logging
+from datetime import datetime
+
+# --- 獲取app.py所在的目錄作為專案根目錄 ---
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# 專案根目錄就是app.py所在目錄
+project_root = current_dir
+
+# 將專案根目錄加到Python搜尋路徑的最前面
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# 移除舊的路徑設置
+# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 打印系統路徑以供調試
+print(f"DEBUG: Python sys.path: {sys.path}")
+# ---
+
 from flask import Flask, jsonify
 from config import Config
 from db import init_db
 from utils.ping_thread import start_keep_alive_thread
 from utils.logger import setup_logger
 from routes.export import export_bp
-import traceback
 from services.scheduler_service import reminder_scheduler
-import requests
-import os
-import time
-from config import Config
-import sys
-import logging
-from datetime import datetime
 
 # 嘗試導入新的日誌配置，如果找不到則使用原有的setup_logger
 try:
@@ -23,9 +40,6 @@ except ImportError:
     from utils.logger import setup_logger as setup_logging
     print("找不到logging_config模組，使用基本日誌系統 utils.logger")
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 # 設置時區
 os.environ['TZ'] = 'Asia/Taipei'
 # 根據平台決定是否調用 tzset
@@ -34,6 +48,23 @@ if hasattr(time, 'tzset'):
 
 # 從 update_db.py 導入更新函數
 from db.update_db import update_database
+
+# 導入所有必要的模型用於表創建檢查
+try:
+    from models import (
+        User, CheckinRecord, Vocabulary, UserVocabulary,
+        ReminderSetting, GroupMessage
+    )
+    print("成功導入所有模型類")
+except ImportError as e:
+    print(f"無法導入某些模型類: {e}")
+
+# 導入詞彙服務
+try:
+    from services.vocabulary_service import init_vocabulary_database as init_vocab_db_with_data
+    print("成功導入詞彙初始化服務")
+except ImportError as e:
+    print(f"無法導入詞彙初始化服務: {e}")
 
 def check_dependencies():
     """檢查關鍵依賴項的可用性，並記錄狀態"""
@@ -92,41 +123,79 @@ def create_app(config_class=Config):
     from utils.file_helper import ensure_file_exists
     app.logger.info("檔案檢查完成")
     
-    # 檢查並更新數據庫結構（保留數據）
+    # --- 修改數據庫初始化流程 ---
+    # 1. 執行數據庫結構更新 (ALTER TABLE 等)
     try:
-        update_database()
+        update_database() # update_db.py 只應包含 ALTER TABLE 等遷移操作
+        app.logger.info("數據庫結構更新檢查完成")
     except Exception as e:
+        app.logger.error(f"警告: 數據庫更新過程中出錯: {e}")
         print(f"警告: 數據庫更新過程中出錯: {e}")
-        print("將繼續使用現有數據庫結構")
+        print("將繼續嘗試確保表結構存在")
     
-    # 初始化資料庫（如果表不存在則創建）
-    init_db()
-    
-    # 初始化詞彙數據庫
+    # 2. 確保所有基礎表都存在 (CREATE TABLE IF NOT EXISTS)
     try:
-        from services.vocabulary_service import init_vocabulary_database
-        init_vocabulary_database()
-        print("✅ 詞彙數據庫初始化完成")
+        print("確保所有數據庫表存在...")
+        # 確保模型已被導入
+        if 'User' in globals():
+            User.create_table_if_not_exists()
+            CheckinRecord.create_table_if_not_exists()
+            Vocabulary.create_table_if_not_exists()
+            UserVocabulary.create_table_if_not_exists()
+            ReminderSetting.create_table_if_not_exists()
+            GroupMessage.create_table_if_not_exists()
+            # 添加其他表...
+            print("✅ 所有基本表結構已確認/創建")
+        else:
+            # 如果模型導入失敗，使用舊方法
+            print("⚠️ 使用舊的init_db方法初始化數據庫")
+            init_db()
     except Exception as e:
+        app.logger.error(f"❌ 檢查/創建數據表時出錯: {e}")
+        print(f"❌ 檢查/創建數據表時出錯: {e}")
+        print("將嘗試使用舊的初始化方法")
+        # 嘗試舊的初始化方法
+        try:
+            init_db()
+        except Exception as e2:
+            app.logger.error(f"❌ 舊的初始化方法也失敗: {e2}")
+            print(f"❌ 舊的初始化方法也失敗: {e2}")
+    
+    # 3. 初始化詞彙數據 (包括填充默認詞彙)
+    try:
+        if 'init_vocab_db_with_data' in globals():
+            init_vocab_db_with_data() # 這個函數負責創建表和填充數據
+            print("✅ 詞彙數據庫初始化完成 (含預設資料)")
+        else:
+            print("⚠️ 未找到詞彙初始化函數，跳過詞彙初始化")
+    except Exception as e:
+        app.logger.error(f"❌ 詞彙數據庫初始化失敗: {e}")
         print(f"❌ 詞彙數據庫初始化失敗: {e}")
+    # --- 結束修改數據庫初始化流程 ---
     
     # 註冊藍圖
-    from routes.api import api_bp
-    from routes.webhook import webhook_bp
-    from routes.rich_menu import rich_menu_bp
-    from routes.history import history_bp
-    from routes.group import group_bp
-    from routes.views import views_bp
-    from routes.admin import admin_bp
-    
-    app.register_blueprint(export_bp)
-    app.register_blueprint(api_bp)
-    app.register_blueprint(webhook_bp)
-    app.register_blueprint(rich_menu_bp)
-    app.register_blueprint(history_bp)
-    app.register_blueprint(group_bp)
-    app.register_blueprint(views_bp)
-    app.register_blueprint(admin_bp)
+    print("DEBUG: 正在註冊藍圖...")
+    try:
+        from routes.api import api_bp
+        from routes.webhook import webhook_bp
+        from routes.rich_menu import rich_menu_bp
+        from routes.history import history_bp
+        from routes.group import group_bp
+        from routes.views import views_bp
+        from routes.admin import admin_bp
+        
+        app.register_blueprint(export_bp)
+        app.register_blueprint(api_bp)
+        app.register_blueprint(webhook_bp)
+        app.register_blueprint(rich_menu_bp)
+        app.register_blueprint(history_bp)
+        app.register_blueprint(group_bp)
+        app.register_blueprint(views_bp)
+        app.register_blueprint(admin_bp)
+        print("DEBUG: 藍圖註冊完成")
+    except Exception as e:
+        app.logger.error(f"註冊藍圖時出錯: {e}")
+        print(f"註冊藍圖時出錯: {e}")
     
     # 預設路由
     @app.route('/')
