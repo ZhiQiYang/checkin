@@ -14,6 +14,12 @@ from config import Config
 from utils.timezone import get_datetime_string, get_current_time, get_date_string
 from db.crud import get_reminder_setting, update_reminder_setting
 import sqlite3
+import logging
+from services.event_service import EventService
+from services import get_daily_words, format_daily_words
+
+# 設置日誌
+logger = logging.getLogger(__name__)
 
 webhook_bp = Blueprint('webhook', __name__)
 
@@ -22,320 +28,31 @@ recent_group_id = None
 
 @webhook_bp.route('/webhook', methods=['POST'])
 def webhook():
-    global recent_group_id
-    body = request.get_data(as_text=True)
-    print(f"==== 收到 webhook 請求 ====")
-    
     try:
+        # 記錄請求接收
+        logger.info("==== 收到 webhook 請求 ====")
+        
+        # 解析請求數據
+        body = request.get_data(as_text=True)
         data = request.json
         events = data.get('events', [])
         
-        for event in events:
-            # 先保存可能的群組ID
-            if event.get('source', {}).get('type') == 'group':
-                recent_group_id = event['source']['groupId']
-
-            # 新增查詢ID功能
-            if (event.get('type') == 'message' and 
-                event.get('message', {}).get('type') == 'text' and 
-                event.get('replyToken') and
-                event.get('source', {}).get('userId')):    
-                text = event.get('message', {}).get('text')
-                reply_token = event.get('replyToken')
-                user_id = event['source'].get('userId')
-    
-                # 顯示用戶 ID 在伺服器日誌
-                print(f"用戶 ID: {user_id}")
-                
-                # 如果消息內容是 "查詢ID"，回覆用戶 ID
-                if text == "查詢ID":
-                    send_reply(reply_token, f"您的用戶 ID 是: {user_id}")
-                    return 'OK'  # 處理完畢，跳過其他邏輯
-            
-            # 處理文字消息
-            if (event.get('type') == 'message' and 
-                event.get('message', {}).get('type') == 'text' and 
-                event.get('replyToken')):
-                
-                text = event.get('message', {}).get('text')
-                reply_token = event.get('replyToken')
-                source_type = event.get('source', {}).get('type')
-                
-                # 始終發送一個基本回覆
-                default_reply = f"收到您的訊息：{text}"
-                
-                # 特殊處理：直接檢查完整命令
-                if text == '!今日單字學習':
-                    user_id = event['source'].get('userId')
-                    if user_id:
-                        try:
-                            today_date = get_date_string()
-                            daily_words = get_daily_words(today_date, user_id)
-                            vocab_message = format_daily_words(daily_words)
-                            send_reply(reply_token, vocab_message)
-                        except Exception as e:
-                            print(f"直接處理「!今日單字學習」時出錯: {str(e)}")
-                            send_reply(reply_token, "📚 今日單字學習\n無法獲取單字，請稍後再試\n可能原因：系統故障或數據庫連接問題")
-                    else:
-                        send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
-                    return 'OK'
-                
-                # 根據消息內容執行不同的業務邏輯
-                if text.startswith('!'):
-                    command = text[1:].lower()
-                    print(f"收到命令: {command}")  # 添加日誌
-                    
-                    # 設置提醒時間命令
-                    # 匹配 "!設定上班提醒 HH:MM" 或 "!设定上班提醒 HH:MM" 格式
-                    set_morning_reminder_match = re.match(r'^設定上班提醒 *(\d{1,2}:\d{2})$', command)
-                    if set_morning_reminder_match:
-                        time_str = set_morning_reminder_match.group(1)
-                        handle_set_reminder(event, reply_token, "morning", time_str)
-                        return 'OK'
-                    
-                    # 匹配 "!設定下班提醒 HH:MM" 或 "!设定下班提醒 HH:MM" 格式
-                    set_evening_reminder_match = re.match(r'^設定下班提醒 *(\d{1,2}:\d{2})$', command)
-                    if set_evening_reminder_match:
-                        time_str = set_evening_reminder_match.group(1)
-                        handle_set_reminder(event, reply_token, "evening", time_str)
-                        return 'OK'
-                    
-                    # 處理設定提醒指令（無時間參數）
-                    if command == '設定提醒':
-                        user_id = event['source'].get('userId')
-                        # 獲取當前提醒設置
-                        settings = get_reminder_setting(user_id)
-                        if settings:
-                            morning_time = settings.get('morning_time', '09:00')
-                            evening_time = settings.get('evening_time', '18:00')
-                            enabled = settings.get('enabled', 1) == 1
-                            weekend_enabled = settings.get('weekend_enabled', 0) == 1
-                            
-                            status = "啟用" if enabled else "停用"
-                            weekend_status = "啟用" if weekend_enabled else "停用"
-                            
-                            # 綜合提醒設置信息
-                            settings_message = (
-                                f"⏰ 當前提醒設置：\n"
-                                f"- 提醒狀態：{status}\n"
-                                f"- 上班提醒時間：{morning_time}\n"
-                                f"- 下班提醒時間：{evening_time}\n"
-                                f"- 週末提醒：{weekend_status}\n\n"
-                                f"您可以使用以下指令修改設置：\n"
-                                f"!設定上班提醒 HH:MM\n"
-                                f"!設定下班提醒 HH:MM\n"
-                                f"或點擊以下連結進行詳細設置：\n"
-                                f"{Config.APP_URL}/reminder-settings?userId={user_id}"
-                            )
-                            
-                            send_reply(reply_token, settings_message)
-                        else:
-                            send_reply(reply_token, "❌ 無法獲取提醒設置，請稍後再試")
-                        return 'OK'
-                    
-                    # 打卡命令處理
-                    if command == '快速打卡' or command == '上班打卡':
-                        handle_quick_checkin(event, reply_token, "上班")
-                        return 'OK'
-                    elif command == '下班打卡':
-                        handle_quick_checkin(event, reply_token, "下班")
-                        return 'OK'
-                    elif command == '打卡':
-                        # 智能自動打卡功能 - 自動判斷類型
-                        handle_quick_checkin(event, reply_token)
-                        return 'OK'
-                    elif command == '打卡報表':
-                        # 打卡報表功能
-                        report_url = f"{Config.APP_URL}/personal-history?userId={event['source'].get('userId')}"
-                        send_reply(reply_token, f"📊 您的打卡報表：\n{report_url}")
-                    elif command == '今日單字學習':
-                        # 獲取用戶ID
-                        user_id = event['source'].get('userId')
-                        if user_id:
-                            try:
-                                # 獲取當天日期
-                                today_date = get_date_string()
-                                # 獲取用戶今日單字
-                                daily_words = get_daily_words(today_date, user_id)
-                                vocab_message = format_daily_words(daily_words)
-                                send_reply(reply_token, vocab_message)
-                            except Exception as e:
-                                print(f"獲取今日單字學習時出錯: {str(e)}")
-                                send_reply(reply_token, "📚 今日單字學習\n無法獲取單字，請稍後再試\n可能原因：系統故障或數據庫連接問題")
-                        else:
-                            send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
-                    elif command in ['單字學習', '學習單字', '今日單字']:  # 添加更多可能的指令別名
-                        # 獲取用戶ID
-                        user_id = event['source'].get('userId')
-                        if user_id:
-                            try:
-                                # 獲取當天日期
-                                today_date = get_date_string()
-                                # 獲取用戶今日單字
-                                daily_words = get_daily_words(today_date, user_id)
-                                vocab_message = format_daily_words(daily_words)
-                                send_reply(reply_token, vocab_message)
-                            except Exception as e:
-                                print(f"獲取今日單字學習時出錯: {str(e)}")
-                                send_reply(reply_token, "📚 今日單字學習\n無法獲取單字，請稍後再試\n可能原因：系統故障或數據庫連接問題")
-                        else:
-                            send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
-                    elif command == '幫助':
-                        # 幫助功能
-                        help_text = (
-                            "📱 打卡系統指令說明：\n"
-                            "!上班打卡 - 快速完成上班打卡\n"
-                            "!下班打卡 - 快速完成下班打卡\n"
-                            "!快速打卡 - 快速完成上班打卡（等同於!上班打卡）\n"
-                            "!打卡報表 - 查看打卡統計報表\n"
-                            "!今日單字學習 - 獲取今日英文單字\n"
-                            "!設定提醒 - 查看與設定提醒時間\n"
-                            "!設定上班提醒 HH:MM - 設定上班提醒時間\n"
-                            "!設定下班提醒 HH:MM - 設定下班提醒時間\n"
-                            "!測試提醒 - 發送測試提醒\n"
-                            "!系統狀態 - 查看系統運行狀態\n"
-                            "!管理指令 - 顯示管理員指令列表\n"
-                            "打卡 - 獲取打卡頁面連結\n"
-                            "其他問題請聯繫管理員"
-                        )
-                        send_reply(reply_token, help_text)
-                    elif command == '測試提醒':
-                        # 測試發送提醒
-                        user_id = event['source'].get('userId')
-                        if user_id:
-                            # 獲取用戶資料
-                            try:
-                                profile_response = requests.get(
-                                    f'https://api.line.me/v2/bot/profile/{user_id}',
-                                    headers={'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'}
-                                )
-                                
-                                if profile_response.status_code == 200:
-                                    profile = profile_response.json()
-                                    display_name = profile.get('displayName', '用戶')
-                                    
-                                    # 發送測試提醒
-                                    from services.notification_service import send_line_notification
-                                    message = f"⏰ 測試 - {display_name}，早安！您今天還沒有上班打卡，請記得打卡。"
-                                    send_line_notification(user_id, message)
-                                    
-                                    send_reply(reply_token, "✅ 測試提醒已發送，請查看您的LINE通知")
-                                else:
-                                    send_reply(reply_token, "❌ 無法獲取用戶資料，請稍後再試")
-                            except Exception as e:
-                                send_reply(reply_token, f"❌ 發送提醒時出錯: {str(e)[:30]}...")
-                        else:
-                            send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
-                    elif command == '系統狀態':
-                        # 查詢系統狀態
-                        try:
-                            status_text = f"📊 系統狀態報告 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})\n"
-                            
-                            # 檢查數據庫
-                            conn = sqlite3.connect(Config.DB_PATH)
-                            c = conn.cursor()
-                            
-                            # 檢查打卡記錄數
-                            c.execute("SELECT COUNT(*) FROM checkin_records")
-                            checkin_count = c.fetchone()[0]
-                            status_text += f"✓ 打卡記錄總數: {checkin_count} 筆\n"
-                            
-                            # 檢查今日打卡數
-                            today = datetime.now().strftime("%Y-%m-%d")
-                            c.execute("SELECT COUNT(*) FROM checkin_records WHERE date = ?", (today,))
-                            today_count = c.fetchone()[0]
-                            status_text += f"✓ 今日打卡數: {today_count} 筆\n"
-                            
-                            # 檢查用戶數
-                            c.execute("SELECT COUNT(*) FROM users")
-                            user_count = c.fetchone()[0]
-                            status_text += f"✓ 用戶總數: {user_count} 人\n"
-                            
-                            # 檢查最近一次打卡
-                            c.execute("SELECT name, date, time, checkin_type FROM checkin_records ORDER BY id DESC LIMIT 1")
-                            last_record = c.fetchone()
-                            if last_record:
-                                status_text += f"✓ 最近打卡: {last_record[0]} 於 {last_record[1]} {last_record[2]} {last_record[3]}打卡\n"
-                            
-                            conn.close()
-                            
-                            # 添加系統版本信息
-                            status_text += f"✓ 系統運行正常\n✓ 版本: 2025.04.01"
-                            
-                            send_reply(reply_token, status_text)
-                        except Exception as e:
-                            send_reply(reply_token, f"❌ 獲取系統狀態時出錯: {str(e)[:30]}...")
-                    elif command == '管理指令':
-                        # 檢查是否為管理員
-                        user_id = event['source'].get('userId')
-                        from routes.admin import ADMIN_IDS  # 導入管理員列表
-                        
-                        if user_id in ADMIN_IDS:
-                            admin_help = (
-                                "🔧 管理員指令列表：\n"
-                                "!重置菜單 - 重置LINE Rich Menu\n"
-                                "!診斷系統 - 執行系統診斷\n"
-                                "!備份數據 - 觸發數據庫備份\n"
-                                "!清理緩存 - 清理系統緩存\n"
-                                "!發送群通知 - 發送全群通知\n"
-                            )
-                            send_reply(reply_token, admin_help)
-                        else:
-                            send_reply(reply_token, "⚠️ 您不是管理員，無法查看管理指令")
-                    elif command == '重置菜單' and event['source'].get('userId') in ADMIN_IDS:
-                        # 重置Rich Menu (僅管理員)
-                        from services.rich_menu_service import init_rich_menu_process
-                        success, message = init_rich_menu_process()
-                        send_reply(reply_token, f"{'✅' if success else '❌'} {message}")
-                    elif command == '診斷系統' and event['source'].get('userId') in ADMIN_IDS:
-                        # 執行系統診斷 (僅管理員)
-                        send_reply(reply_token, "🔍 系統診斷已啟動，報告將稍後發送")
-                        
-                        # 異步執行診斷
-                        def run_diagnostic():
-                            try:
-                                diagnostic_response = requests.get(f"{Config.APP_URL}/system-diagnostic")
-                                if diagnostic_response.status_code == 200:
-                                    from services.notification_service import send_line_notification
-                                    send_line_notification(event['source'].get('userId'), "📊 系統診斷完成，請訪問管理面板查看詳細報告")
-                            except Exception as e:
-                                print(f"診斷錯誤: {e}")
-                        
-                        thread = threading.Thread(target=run_diagnostic)
-                        thread.daemon = True
-                        thread.start()
-                    else:
-                        # 其他命令使用默認回覆
-                        send_reply(reply_token, default_reply)
-                elif text in ['打卡', '打卡連結']:
-                    liff_url = f"https://liff.line.me/{Config.LIFF_ID}"
-                    send_reply(reply_token, f"請點擊以下連結進行打卡：\n{liff_url}")
-                else:
-                    # 不符合特殊條件的消息使用默認回覆
-                    send_reply(reply_token, default_reply)
-                
-                # 處理群組消息存儲
-                if source_type == 'group' and event['source']['groupId'] == Config.LINE_GROUP_ID:
-                    user_id = event['source'].get('userId')
-                    if user_id:
-                        # 獲取用戶資料並保存群組消息
-                        profile_response = requests.get(
-                            f'https://api.line.me/v2/bot/profile/{user_id}',
-                            headers={
-                                'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'
-                            }
-                        )
-                        if profile_response.status_code == 200:
-                            profile = profile_response.json()
-                            user_name = profile.get('displayName', '未知用戶')
-                            timestamp = get_datetime_string()
-                            save_group_message(user_id, user_name, text, timestamp)
+        if not events:
+            logger.warning("沒有事件需要處理")
+            return 'OK'
+        
+        # 使用事件服務處理事件
+        results = EventService.process_events(events)
+        
+        # 記錄處理結果
+        logger.info(f"處理了 {len(events)} 個事件")
         
         return 'OK'
+        
     except Exception as e:
-        error_msg = f"處理 webhook 時出錯: {str(e)}"
-        print(error_msg)
-        return 'OK'
+        logger.error(f"處理webhook請求時出錯: {str(e)}")
+        logger.debug(traceback.format_exc())
+        return 'OK'  # 即使處理出錯也返回OK，以避免LINE重發請求
 
 # ... (以下其他函數保持不變，請參考上面的完整代碼)
 
@@ -439,19 +156,26 @@ def app_debug():
         conn = sqlite3.connect(Config.DB_PATH)
         c = conn.cursor()
         
-        # 檢查打卡記錄
+        # 檢查打卡記錄數
         c.execute("SELECT COUNT(*) FROM checkin_records")
         status["checkin_count"] = c.fetchone()[0]
         
-        # 檢查最近打卡
-        c.execute("SELECT * FROM checkin_records ORDER BY id DESC LIMIT 1")
+        # 檢查今日打卡數
+        today = datetime.now().strftime("%Y-%m-%d")
+        c.execute("SELECT COUNT(*) FROM checkin_records WHERE date = ?", (today,))
+        today_count = c.fetchone()[0]
+        status["today_checkin_count"] = today_count
+        
+        # 檢查用戶數
+        c.execute("SELECT COUNT(*) FROM users")
+        user_count = c.fetchone()[0]
+        status["user_count"] = user_count
+        
+        # 檢查最近一次打卡
+        c.execute("SELECT name, date, time, checkin_type FROM checkin_records ORDER BY id DESC LIMIT 1")
         last_record = c.fetchone()
         if last_record:
             status["last_checkin"] = dict(zip([col[0] for col in c.description], last_record))
-        
-        # 檢查群組消息
-        c.execute("SELECT COUNT(*) FROM group_messages")
-        status["messages_count"] = c.fetchone()[0]
         
         conn.close()
         status["db_connection"] = "OK"

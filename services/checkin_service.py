@@ -1,7 +1,8 @@
 # services/checkin_service.py
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.timezone import get_current_time, get_date_string, get_time_string, get_datetime_string
 from utils.timezone import get_current_time, get_date_string, get_time_string, get_datetime_string
+from models import CheckinRecord, User
 
 from db.crud import (
     insert_checkin_record, 
@@ -98,3 +99,121 @@ def quick_checkin(user_id, name, checkin_type="上班", location=None, note=None
 
 # 向後兼容的別名，但標記為棄用
 save_checkin_record = process_checkin
+
+def record_checkin(user_id, checkin_data):
+    """
+    記錄用戶簽到
+    
+    Args:
+        user_id: 用戶ID
+        checkin_data: 簽到數據，包含name, checkin_type, location等字段
+        
+    Returns:
+        記錄ID或None（失敗時）
+    """
+    try:
+        # 確保數據表存在
+        CheckinRecord.create_table_if_not_exists()
+        
+        # 獲取當前日期
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        current_time = datetime.now().strftime('%H:%M:%S')
+        
+        # 合併數據
+        data = {
+            'user_id': user_id,
+            'date': current_date,
+            'time': current_time,
+            **checkin_data
+        }
+        
+        # 創建或更新記錄
+        result = CheckinRecord.create_or_update(data)
+        return result
+    
+    except Exception as e:
+        print(f"記錄簽到時出錯: {str(e)}")
+        return None
+
+
+def get_user_records(user_id, start_date=None, end_date=None, limit=30):
+    """
+    獲取用戶的簽到記錄
+    
+    Args:
+        user_id: 用戶ID
+        start_date: 開始日期（可選）
+        end_date: 結束日期（可選）
+        limit: 記錄數量限制
+        
+    Returns:
+        簽到記錄列表
+    """
+    try:
+        # 確保數據表存在
+        CheckinRecord.create_table_if_not_exists()
+        
+        # 獲取記錄
+        records = CheckinRecord.get_user_records(user_id, start_date, end_date, limit)
+        return records
+    
+    except Exception as e:
+        print(f"獲取用戶簽到記錄時出錯: {str(e)}")
+        return []
+
+
+def get_today_records(date=None):
+    """
+    獲取今日所有簽到記錄
+    
+    Args:
+        date: 日期，默認為今天
+        
+    Returns:
+        簽到記錄列表
+    """
+    try:
+        # 確保數據表存在
+        CheckinRecord.create_table_if_not_exists()
+        
+        # 如果未提供日期，使用今天
+        if not date:
+            date = datetime.now().strftime('%Y-%m-%d')
+            
+        # 獲取記錄
+        records = CheckinRecord.get_today_records(date)
+        return records
+    
+    except Exception as e:
+        print(f"獲取今日簽到記錄時出錯: {str(e)}")
+        return []
+
+
+def get_checkin_statistics(user_id, month=None):
+    """
+    獲取用戶簽到統計信息
+    
+    Args:
+        user_id: 用戶ID
+        month: 月份（YYYY-MM格式，可選）
+        
+    Returns:
+        統計信息字典
+    """
+    try:
+        # 確保數據表存在
+        CheckinRecord.create_table_if_not_exists()
+        
+        # 獲取統計信息
+        stats = CheckinRecord.get_statistics(user_id, month)
+        return stats
+    
+    except Exception as e:
+        print(f"獲取簽到統計信息時出錯: {str(e)}")
+        return {
+            'total_days': 0,
+            'on_time_days': 0,
+            'late_days': 0,
+            'no_checkin_days': 0,
+            'overtime_days': 0
+        }

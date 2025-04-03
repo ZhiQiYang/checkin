@@ -1,4 +1,27 @@
 # services/__init__.py
-from .checkin_service import process_checkin
-from .notification_service import send_line_message_to_group, send_line_notification
-from .group_service import save_group_message, get_recent_messages
+"""
+服務層：提供各種業務邏輯服務
+"""
+
+from services.vocabulary_service import (
+    get_daily_words, 
+    format_daily_words, 
+    add_vocabulary
+)
+
+from services.checkin_service import (
+    record_checkin,
+    get_user_records,
+    get_today_records,
+    get_checkin_statistics
+)
+
+__all__ = [
+    'get_daily_words',
+    'format_daily_words',
+    'add_vocabulary',
+    'record_checkin',
+    'get_user_records',
+    'get_today_records',
+    'get_checkin_statistics'
+]

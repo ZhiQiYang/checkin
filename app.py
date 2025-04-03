@@ -12,13 +12,21 @@ import os
 import time
 from config import Config
 import sys
+import logging
+from datetime import datetime
+
+# 導入新的日誌配置
+from logging_config import setup_logging
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 設置時區
+os.environ['TZ'] = 'Asia/Taipei'
+# 根據平台決定是否調用 tzset
+if hasattr(time, 'tzset'):
+    time.tzset()  # 應用時區變更，只在 Unix/Linux 環境有效
 
-os.environ['TZ'] = Config.TIMEZONE
-time.tzset()  # 應用時區變更，只在 Unix/Linux 環境有效
 # 從 update_db.py 導入更新函數
 from db.update_db import update_database
 
@@ -61,15 +69,23 @@ def check_dependencies():
     print("=======================\n")
 
 def create_app(config_class=Config):
+    # 初始化日誌系統
+    logger = setup_logging()
+    logger.info("應用程序啟動中...")
+    
     # 檢查依賴項狀態
     check_dependencies()
     
     app = Flask(__name__)
     app.config.from_object(config_class)
     
+    # 使用新的日誌系統
+    app.logger.handlers = logger.handlers
+    app.logger.setLevel(logger.level)
+    
     # 檢查並創建必要的檔案
     from utils.file_helper import ensure_file_exists
-    print("檔案檢查完成")
+    app.logger.info("檔案檢查完成")
     
     # 檢查並更新數據庫結構（保留數據）
     try:
@@ -114,7 +130,6 @@ def create_app(config_class=Config):
     
     @app.route('/ping')
     def ping():
-        from datetime import datetime
         return {"status": "alive", "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, 200
     
     # 初始化提醒系統
