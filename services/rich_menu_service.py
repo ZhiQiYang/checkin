@@ -52,7 +52,7 @@ def create_rich_menu():
         print(f"創建 Rich Menu 失敗: {response.text}")
         return None
 
-def upload_rich_menu_image(rich_menu_id, image_path='static/rich_menu.jpg'):
+def upload_rich_menu_image(rich_menu_id, image_path='static/rich_menu.png'):
     try:
         with open(image_path, 'rb') as f:
             image_data = f.read()
@@ -60,12 +60,15 @@ def upload_rich_menu_image(rich_menu_id, image_path='static/rich_menu.jpg'):
         response = requests.post(
             f'https://api-data.line.me/v2/bot/richmenu/{rich_menu_id}/content',
             headers={
-                'Content-Type': 'image/jpeg',
+                'Content-Type': 'image/png',
                 'Authorization': f'Bearer {Config.MESSAGING_CHANNEL_ACCESS_TOKEN}'
             },
             data=image_data
         )
 
+        if response.status_code != 200:
+            print(f"上傳 Rich Menu 圖片失敗: {response.status_code} {response.text}")
+        
         return response.status_code == 200
     except Exception as e:
         print(f"上傳 Rich Menu 圖片錯誤: {e}")
