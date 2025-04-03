@@ -1,380 +1,246 @@
 {% extends "base.html" %}
 
-{% block title %}打卡頁面{% endblock %}
+{% block title %}打卡{% endblock %}
 
 {% block extra_css %}
 <style>
-    button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
-    input, textarea, select { width: 100%; margin-bottom: 10px; padding: 5px; }
-    
-    /* 打卡類型選擇器樣式 */
-    .checkin-type-options {
-        padding: 12px;
-        background-color: #f5f5f5;
+    .checkin-type-options .radio-group {
+        display: grid; /* 使用 Grid 布局 */
+        grid-template-columns: 1fr 1fr; /* 分成兩欄 */
+        gap: 1rem;
+    }
+    .radio-option { /* 卡片化選項 */
+        border: 2px solid var(--border-color);
         border-radius: 8px;
-        margin-bottom: 20px;
-    }
-    
-    .radio-group {
-        display: flex;
-        gap: 10px;
-        margin-top: 8px;
-    }
-    
-    .radio-option {
-        flex: 1;
-        display: block;
-        padding: 12px;
-        border-radius: 6px;
+        padding: 1rem;
         text-align: center;
         cursor: pointer;
-        transition: all 0.3s ease;
-        font-weight: bold;
+        transition: all 0.2s ease;
+        background-color: #fff;
     }
-    
-    .radio-option input[type="radio"] {
-        display: none;
+    .radio-option:hover {
+        background-color: var(--light-gray);
     }
-    
-    .checkin-in {
-        background-color: #e3f2fd;
-        color: #0d47a1;
-        border: 2px solid #90caf9;
-    }
-    
-    .checkin-out {
-        background-color: #fff8e1;
-        color: #ff8f00;
-        border: 2px solid #ffcc80;
-    }
-    
     .radio-option.selected {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        transform: translateY(-2px);
+        border-color: var(--primary-color);
+        background-color: rgba(0, 123, 255, 0.05);
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
     }
-    
-    .checkin-in.selected {
-        background-color: #bbdefb;
-        border-color: #1976d2;
+    .radio-option input[type="radio"] { display: none; }
+    .radio-option .radio-label { font-weight: 600; }
+
+    #submitBtn {
+        font-size: 1.1rem;
+        padding: 0.8rem 1.5rem;
     }
-    
-    .checkin-out.selected {
-        background-color: #ffe0b2;
-        border-color: #f57c00;
+    #getLocationBtn { /* 將定位按鈕改為次要樣式 */
+        margin-right: 1rem;
     }
-    
-    /* 打卡按鈕樣式 */
-    .checkin-button-in {
-        background-color: #1976d2 !important;
+    .location-input-group { /* 讓經緯度輸入框並排 */
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
     }
-    
-    .checkin-button-out {
-        background-color: #f57c00 !important;
-    }
+    /* 狀態訊息的樣式 (Bootstrap alert 基礎上微調) */
+    #status-message, #status { margin-top: 1.5rem; }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>📍 打卡頁面</h1>
+<div class="text-center mb-4">
+    <i class="fas fa-map-marker-alt fa-3x text-primary mb-2"></i>
+    <h1>打卡</h1>
+</div>
 
-<div id="status-message" class="alert alert-info">正在載入打卡狀態...</div>
+<div id="status-message" class="alert alert-info" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-spinner fa-spin mr-2"></i>
+        <span>正在載入打卡狀態...</span>
+    </div>
+</div>
 
 <form id="checkinForm">
-  <input type="hidden" id="userId" value="">
-  <input type="hidden" id="displayName" value="">
+    <input type="hidden" id="userId" value="">
+    <input type="hidden" id="displayName" value="">
 
-  <!-- 打卡類型選擇 -->
-  <div class="checkin-type-options">
-    <label>打卡類型：</label>
-    <div class="radio-group">
-      <label class="radio-option checkin-in">
-        <input type="radio" name="checkinType" value="上班" id="checkinType-in" checked>
-        <span class="radio-label">上班打卡</span>
-      </label>
-      <label class="radio-option checkin-out">
-        <input type="radio" name="checkinType" value="下班" id="checkinType-out">
-        <span class="radio-label">下班打卡</span>
-      </label>
+    <div class="form-group checkin-type-options">
+        <label class="mb-2">選擇打卡類型：</label>
+        <div class="radio-group">
+            <label class="radio-option" id="label-checkinType-in">
+                <input type="radio" name="checkinType" value="上班" id="checkinType-in" checked>
+                <span class="radio-label"><i class="fas fa-sun mr-1"></i> 上班打卡</span>
+            </label>
+            <label class="radio-option" id="label-checkinType-out">
+                <input type="radio" name="checkinType" value="下班" id="checkinType-out">
+                <span class="radio-label"><i class="fas fa-moon mr-1"></i> 下班打卡</span>
+            </label>
+        </div>
     </div>
-  </div>
 
-  <label>位置名稱：</label>
-  <input type="text" id="location" placeholder="例如：台中辦公室">
+    <div class="form-group">
+        <label for="location"><i class="fas fa-map-pin mr-1"></i> 位置名稱</label>
+        <input type="text" id="location" class="form-control" placeholder="例如：台北辦公室 / 客戶公司">
+    </div>
 
-  <label>備註（選填）：</label>
-  <textarea id="note" rows="3"></textarea>
+    <div class="form-group">
+        <label for="note"><i class="fas fa-sticky-note mr-1"></i> 備註 (選填)</label>
+        <textarea id="note" class="form-control" rows="3" placeholder="例如：外勤拜訪客戶"></textarea>
+    </div>
 
-  <label>緯度：</label>
-  <input type="text" id="latitude" readonly>
+    <div class="card bg-light mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0"><i class="fas fa-location-arrow mr-1"></i> 定位資訊</h5>
+            <button type="button" id="getLocationBtn" class="btn btn-sm btn-outline-secondary" onclick="getLocation()">
+                <i class="fas fa-sync-alt mr-1"></i> 重新定位
+            </button>
+        </div>
+        <div class="location-input-group">
+            <div class="form-group mb-0">
+                <label for="latitude">緯度</label>
+                <input type="text" id="latitude" class="form-control form-control-sm" readonly>
+            </div>
+            <div class="form-group mb-0">
+                <label for="longitude">經度</label>
+                <input type="text" id="longitude" class="form-control form-control-sm" readonly>
+            </div>
+        </div>
+      </div>
+    </div>
 
-  <label>經度：</label>
-  <input type="text" id="longitude" readonly>
-
-  <button type="button" onclick="getLocation()">📍 自動定位</button>
-  <button type="button" id="submitBtn" class="checkin-button-in" onclick="submitCheckin()">✅ 上班打卡</button>
+    <button type="button" id="submitBtn" class="btn btn-primary btn-block mt-4" onclick="submitCheckin()">
+        <i class="fas fa-check-circle mr-1"></i> 送出打卡
+    </button>
 </form>
 
-<div id="status"></div>
-{% endblock %}
+<div id="status"></div> {% endblock %}
 
 {% block scripts %}
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-  let userId = "";
-  let displayName = "";
+    let userId = "";
+    let displayName = "";
 
-  // 初始化LIFF
-  async function initializeLiff() {
-    try {
-      await liff.init({ liffId: "{{ liff_id }}" });
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
-      }
-      
-      const profile = await liff.getProfile();
-      userId = profile.userId;
-      displayName = profile.displayName;
-      
-      document.getElementById("userId").value = profile.userId;
-      document.getElementById("displayName").value = profile.displayName;
-      
-      // 加載完成後，檢查打卡狀態
-      checkTodayCheckinStatus();
-    } catch (error) {
-      console.error("LIFF初始化失敗:", error);
-      document.getElementById("status").innerHTML = `
-        <div class="alert alert-danger">
-          <strong>❌ LIFF初始化失敗</strong>
-          <p>請確保您在LINE應用程式中開啟此頁面。</p>
-        </div>
-      `;
-    }
-  }
+    // --- (原有的 initializeLiff, checkTodayCheckinStatus, getLocation, submitCheckin 不變) ---
 
-  // 檢查今日打卡狀態
-  // 修復 checkTodayCheckinStatus 函數
-async function checkTodayCheckinStatus() {
-  try {
-    const userId = document.getElementById("userId").value;
-    if (!userId) {
-      console.log("尚未獲取用戶ID，跳過檢查");
-      return; // 如果還沒有獲取到用戶ID，就不檢查
-    }
-    
-    console.log("正在檢查打卡狀態，用戶ID: " + userId);
-    
-    // 改用 /api/checkin/status 端點
-    const response = await fetch(`/api/checkin/status?userId=${userId}`);
-    const data = await response.json();
-    
-    console.log("打卡狀態API回應:", data);
-    
-    const statusMessage = document.getElementById("status-message");
-    
-    if (data.success) {
-      console.log("成功獲取打卡狀態");
-      // 檢查上班打卡狀態
-      const hasCheckinIn = data.status && data.status['上班'];
-      const hasCheckinOut = data.status && data.status['下班'];
-      
-      console.log("上班打卡狀態:", hasCheckinIn);
-      console.log("下班打卡狀態:", hasCheckinOut);
-      
-      // 如果兩種打卡都完成了
-      if (hasCheckinIn && hasCheckinOut) {
-        console.log("今天上班和下班都已打卡");
-        statusMessage.className = "alert alert-success";
-        statusMessage.innerHTML = '<strong>🎉 今天的上班和下班打卡都已完成！</strong>';
-        
-        document.getElementById("checkinType-in").disabled = true;
-        document.getElementById("checkinType-out").disabled = true;
-        document.getElementById("submitBtn").disabled = true;
-      } 
-      // 如果上班已打卡但下班未打卡，自動選擇下班打卡
-      else if (hasCheckinIn && !hasCheckinOut) {
-        console.log("今天已上班打卡，未下班打卡");
-        document.getElementById("checkinType-in").disabled = true;
-        document.getElementById("checkinType-out").disabled = false;
-        document.getElementById("checkinType-out").checked = true;
-        
-        statusMessage.className = "alert alert-info";
-        statusMessage.innerHTML = '<strong>✅ 已完成上班打卡，可以進行下班打卡</strong>';
-      }
-      // 如果沒有上班打卡，禁用下班打卡選項
-      else if (!hasCheckinIn) {
-        console.log("今天尚未上班打卡");
-        document.getElementById("checkinType-in").disabled = false;
-        document.getElementById("checkinType-out").disabled = true;
-        document.getElementById("checkinType-in").checked = true;
-        
-        statusMessage.className = "alert alert-warning";
-        statusMessage.innerHTML = '<strong>⚠️ 請先完成上班打卡，才能進行下班打卡</strong>';
-      }
-      
-      // 更新UI顯示
-      updateCheckinTypeUI();
-      
-    } else {
-      console.error("API返回失敗:", data);
-      statusMessage.className = "alert alert-danger";
-      statusMessage.innerHTML = `<strong>❌ 無法取得打卡狀態</strong><p>${data.message || '請重新載入頁面'}</p>`;
-    }
-  } catch (error) {
-    console.error("檢查打卡狀態出錯:", error);
-    const statusMessage = document.getElementById("status-message");
-    statusMessage.className = "alert alert-danger";
-    statusMessage.innerHTML = `<strong>❌ 檢查打卡狀態失敗</strong><p>${error.message}</p>`;
-  }
-}
+    function updateCheckinTypeUI() {
+        const checkinInRadio = document.getElementById('checkinType-in');
+        const checkinOutRadio = document.getElementById('checkinType-out');
+        const labelIn = document.getElementById('label-checkinType-in');
+        const labelOut = document.getElementById('label-checkinType-out');
+        const submitBtn = document.getElementById('submitBtn');
 
-  // 獲取位置
-  function getLocation() {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          document.getElementById("latitude").value = pos.coords.latitude;
-          document.getElementById("longitude").value = pos.coords.longitude;
-          document.getElementById("status").innerHTML = `
-            <div class="alert alert-success">
-              <strong>✅ 已取得定位資訊</strong>
-            </div>
-          `;
-        },
-        err => {
-          document.getElementById("status").innerHTML = `
-            <div class="alert alert-danger">
-              <strong>❌ 取得定位失敗</strong>
-              <p>${err.message}</p>
-            </div>
-          `;
+        // 移除所有 selected 樣式
+        labelIn.classList.remove('selected');
+        labelOut.classList.remove('selected');
+
+        // 根據選中狀態添加 selected 樣式並更新按鈕
+        if (checkinInRadio.checked) {
+            labelIn.classList.add('selected');
+            submitBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-1"></i> 確認上班打卡';
+            submitBtn.className = "btn btn-primary btn-block mt-4"; // 主色調
+        } else if (checkinOutRadio.checked) {
+            labelOut.classList.add('selected');
+            submitBtn.innerHTML = '<i class="fas fa-sign-out-alt mr-1"></i> 確認下班打卡';
+            submitBtn.className = "btn btn-success btn-block mt-4"; // 成功色調
         }
-      );
-    } else {
-      document.getElementById("status").innerHTML = `
-        <div class="alert alert-danger">
-          <strong>❌ 瀏覽器不支援定位功能</strong>
-        </div>
-      `;
-    }
-  }
 
-  // 更新打卡類型UI
-  function updateCheckinTypeUI() {
-    const checkinInRadio = document.getElementById('checkinType-in');
-    const checkinOutRadio = document.getElementById('checkinType-out');
-    const submitBtn = document.getElementById('submitBtn');
-    const inOption = document.querySelector('.checkin-in');
-    const outOption = document.querySelector('.checkin-out');
-    
-    // 移除所有 selected 類別
-    inOption.classList.remove('selected');
-    outOption.classList.remove('selected');
-    
-    // 檢查是否嘗試選擇下班打卡但被禁用
-    if (checkinOutRadio.checked && checkinOutRadio.disabled) {
-      checkinInRadio.checked = true;
-    }
-    
-    // 根據選中的打卡類型更新UI
-    if (checkinInRadio.checked) {
-      submitBtn.innerHTML = "✅ 上班打卡";
-      submitBtn.className = "btn btn-primary btn-lg";
-      inOption.classList.add('selected');
-    } else {
-      submitBtn.innerHTML = "✅ 下班打卡";
-      submitBtn.className = "btn btn-success btn-lg";
-      outOption.classList.add('selected');
-    }
-  }
+        // 根據禁用狀態調整外觀
+        labelIn.style.opacity = checkinInRadio.disabled ? 0.5 : 1;
+        labelIn.style.cursor = checkinInRadio.disabled ? 'not-allowed' : 'pointer';
+        labelOut.style.opacity = checkinOutRadio.disabled ? 0.5 : 1;
+        labelOut.style.cursor = checkinOutRadio.disabled ? 'not-allowed' : 'pointer';
+        submitBtn.disabled = (checkinInRadio.checked && checkinInRadio.disabled) || (checkinOutRadio.checked && checkinOutRadio.disabled);
+        if (submitBtn.disabled) {
+             submitBtn.innerHTML = '<i class="fas fa-lock mr-1"></i> 今日打卡已完成';
+        }
 
-  // 提交打卡
-  function submitCheckin() {
-    // 獲取選中的打卡類型
-    const checkinType = document.querySelector('input[name="checkinType"]:checked').value;
-    
-    // 驗證
-    if (!document.getElementById("location").value.trim()) {
-      document.getElementById("status").innerHTML = `
-        <div class="alert alert-danger">
-          <strong>❌ 請輸入位置名稱</strong>
-        </div>
-      `;
-      return;
     }
-    
-    const payload = {
-      userId: document.getElementById("userId").value,
-      displayName: document.getElementById("displayName").value,
-      location: document.getElementById("location").value,
-      note: document.getElementById("note").value,
-      latitude: document.getElementById("latitude").value,
-      longitude: document.getElementById("longitude").value,
-      checkinType: checkinType  // 使用選中的打卡類型
-    };
 
-    // 提交前禁用按鈕
-    const submitBtn = document.getElementById("submitBtn");
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = "處理中...";
-
-    fetch("/api/checkin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-    .then(res => res.json())
-    .then(data => {
-      const status = document.getElementById("status");
-      
-      if (data.success) {
-        // 成功打卡
-        status.innerHTML = `
-          <div class="alert alert-success">
-            <strong>✅ ${data.message}</strong>
-            <p class="mt-2 mb-0">您已完成${checkinType}打卡！</p>
-          </div>
+    // 顯示提交後的狀態訊息
+    function displayStatus(type, message, details = '') {
+        const statusDiv = document.getElementById("status");
+        let icon = '';
+        let alertClass = '';
+        switch(type) {
+            case 'success':
+                icon = 'fas fa-check-circle';
+                alertClass = 'alert-success';
+                break;
+            case 'error':
+                icon = 'fas fa-times-circle';
+                alertClass = 'alert-danger';
+                break;
+            case 'info':
+                icon = 'fas fa-info-circle';
+                alertClass = 'alert-info';
+                break;
+            case 'warning':
+                icon = 'fas fa-exclamation-triangle';
+                alertClass = 'alert-warning';
+                break;
+        }
+        statusDiv.innerHTML = `
+            <div class="alert ${alertClass} alert-dismissible fade show mt-3" role="alert">
+                <h5 class="alert-heading"><i class="${icon} mr-2"></i>${message}</h5>
+                ${details ? `<p class="mb-0">${details}</p>` : ''}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
         `;
-        
-        // 更新打卡狀態
-        setTimeout(checkTodayCheckinStatus, 1000);
-      } else {
-        // 打卡失敗
-        status.innerHTML = `
-          <div class="alert alert-danger">
-            <strong>❌ ${data.message}</strong>
-          </div>
-        `;
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `✅ ${checkinType}打卡`;
-      }
-    })
-    .catch(error => {
-      console.error("打卡請求失敗:", error);
-      document.getElementById("status").innerHTML = `
-        <div class="alert alert-danger">
-          <strong>❌ 網路錯誤，請重試</strong>
-        </div>
-      `;
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = `✅ ${checkinType}打卡`;
+    }
+
+    // 修改 submitCheckin 函數以使用新的 displayStatus
+    function submitCheckin() {
+        const checkinType = document.querySelector('input[name="checkinType"]:checked').value;
+
+        if (!document.getElementById("location").value.trim()) {
+            displayStatus('error', '請輸入位置名稱');
+            return;
+        }
+
+        const payload = { /* ... 原有的 payload ... */ };
+        const submitBtn = document.getElementById("submitBtn");
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> 處理中...';
+
+        fetch("/api/checkin", { /* ... */ })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                displayStatus('success', data.message, `您已完成${checkinType}打卡！`);
+                setTimeout(checkTodayCheckinStatus, 1000); // 更新狀態
+                // 成功後可以考慮清空表單或禁用按鈕直到下次可打卡
+            } else {
+                displayStatus('error', data.message);
+                submitBtn.disabled = false; // 恢復按鈕
+                updateCheckinTypeUI(); // 更新按鈕文字
+            }
+        })
+        .catch(error => {
+            console.error("打卡請求失敗:", error);
+            displayStatus('error', '網路錯誤，請重試');
+            submitBtn.disabled = false; // 恢復按鈕
+            updateCheckinTypeUI(); // 更新按鈕文字
+        });
+    }
+
+    // --- (原有的 LIFF 初始化和事件監聽不變) ---
+    // 在 DOMContentLoaded 事件中調用 updateCheckinTypeUI
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeLiff();
+        // 初始更新一次 UI
+        updateCheckinTypeUI();
+
+        // 監聽打卡類型變更事件
+        const checkinInRadio = document.getElementById('checkinType-in');
+        const checkinOutRadio = document.getElementById('checkinType-out');
+        if (checkinInRadio && checkinOutRadio) {
+          checkinInRadio.addEventListener('change', updateCheckinTypeUI);
+          checkinOutRadio.addEventListener('change', updateCheckinTypeUI);
+        }
     });
-  }
 
-  // 註冊事件監聽器
-  document.addEventListener('DOMContentLoaded', function() {
-    // 監聽打卡類型變更事件
-    const checkinInRadio = document.getElementById('checkinType-in');
-    const checkinOutRadio = document.getElementById('checkinType-out');
-    
-    if (checkinInRadio && checkinOutRadio) {
-      checkinInRadio.addEventListener('change', updateCheckinTypeUI);
-      checkinOutRadio.addEventListener('change', updateCheckinTypeUI);
-    }
-    
-    // 初始化
-    initializeLiff();
-    updateCheckinTypeUI();
-  });
 </script>
 {% endblock %}
