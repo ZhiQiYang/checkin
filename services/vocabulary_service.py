@@ -53,7 +53,7 @@ def get_daily_words(user_id=None):
     ("fastidious", "挑剔的；過分講究的", 3),
     ("fathom", "理解；測量深度", 3),
     ("fervent", "熱情的；熱烈的", 3),
-]
+
 
 def find_db_path():
     """查找並返回可用的數據庫文件路徑"""
