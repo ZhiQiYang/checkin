@@ -1,275 +1,297 @@
-<!-- templates/reminder_settings.html -->
 {% extends "base.html" %}
 
 {% block title %}提醒設置{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* 自定義開關按鈕樣式，兼容 Bootstrap 4 */
-    .custom-switch {
-        position: relative;
-        display: inline-block;
-        width: 50px;
-        height: 24px;
-        margin-right: 10px;
-        vertical-align: middle;
+    .form-group {
+        display: flex; /* Use flexbox for alignment */
+        align-items: center;
+        justify-content: space-between; /* Push elements apart */
+        padding: 0.8rem 0;
+        border-bottom: 1px solid #eee;
     }
-    
-    .custom-switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
+    .form-group:last-of-type {
+        border-bottom: none;
     }
-    
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 24px;
+    .form-group label:not(.custom-switch) { /* Target text labels */
+       font-weight: 500;
+       margin-bottom: 0; /* Remove default margin */
+       display: flex;
+       align-items: center;
+       color: var(--text-muted);
     }
-    
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
+    .form-group label i {
+        margin-right: 0.6rem;
+        width: 20px; /* Ensure icons align */
+        text-align: center;
+        color: var(--primary-color); /* Give icons color */
     }
-    
-    input:checked + .slider {
-        background-color: #06C755;
+    .form-control.time-input {
+        max-width: 120px; /* Adjust width */
+        border-radius: 6px;
+        text-align: center;
     }
-    
-    input:checked + .slider:before {
-        transform: translateX(26px);
+
+    /* --- Bootstrap 4 Custom Switch --- */
+    .custom-control.custom-switch { padding-left: 2.75rem; } /* Adjust padding */
+    .custom-control-label::before { /* Track */
+        left: -2.75rem;
+        width: 3.5rem;
+        height: 1.75rem;
+        border-radius: 1.75rem;
+        background-color: #e9ecef; /* Off state color */
+        border: #adb5bd solid 1px;
     }
-    
-    .switch-label {
-        font-weight: normal;
-        margin-left: 10px;
-        cursor: pointer;
+    .custom-control-label::after { /* Thumb */
+        top: calc(0.25rem + 2px);
+        left: calc(-2.75rem + 2px);
+        width: calc(1.75rem - 4px);
+        height: calc(1.75rem - 4px);
+        border-radius: 1.75rem;
+        background-color: #adb5bd; /* Thumb color */
+        transition: transform .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
     }
-    
-    .time-input {
-        max-width: 200px;
+    .custom-control-input:checked ~ .custom-control-label::before {
+        background-color: var(--success-color); /* On state color */
+        border-color: var(--success-color);
     }
+    .custom-control-input:checked ~ .custom-control-label::after {
+        background-color: #fff;
+        transform: translateX(1.75rem); /* Move thumb */
+    }
+    .custom-control-input:focus ~ .custom-control-label::before { box-shadow: none; }
+    .switch-label-text { margin-left: 0.5rem; }
+
+    .test-buttons { margin-top: 1.5rem; }
+    .test-buttons .btn { margin-right: 0.5rem; }
+
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container py-4">
-    <h1 class="mb-4">⏰ 打卡提醒設置</h1>
-    
-    <div id="alert-container">
-        <!-- 這裡會動態添加提示框 -->
+    <div class="text-center mb-4">
+        <i class="fas fa-bell fa-3x text-primary mb-2"></i>
+        <h1>打卡提醒設置</h1>
     </div>
-    
-    <div class="card mb-4">
+
+    <div id="alert-container"></div> <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-cogs mr-2"></i>提醒設定</div>
         <div class="card-body">
             <form id="reminderForm">
                 <input type="hidden" id="userId" value="">
-                
-                <div class="form-group mb-3">
-                    <label class="custom-switch">
-                        <input type="checkbox" id="enabled" checked>
-                        <span class="slider"></span>
-                    </label>
-                    <span class="switch-label">啟用打卡提醒</span>
+
+                <div class="form-group">
+                    <label for="enabled"><i class="fas fa-power-off"></i>啟用提醒功能</label>
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="enabled" checked>
+                        <label class="custom-control-label" for="enabled"></label>
+                    </div>
                 </div>
-                
-                <div class="form-group mb-3">
-                    <label for="morningTime">上班提醒時間：</label>
+
+                <div class="form-group">
+                    <label for="morningTime"><i class="fas fa-sun"></i>上班提醒時間</label>
                     <input type="time" id="morningTime" class="form-control time-input" value="09:00">
-                    <small class="text-muted">設置您希望在多晚沒打卡時收到上班提醒</small>
                 </div>
-                
-                <div class="form-group mb-3">
-                    <label for="eveningTime">下班提醒時間：</label>
+                <small class="form-text text-muted mb-3 d-block text-right">系統會在此時間後檢查是否已上班打卡</small>
+
+                <div class="form-group">
+                    <label for="eveningTime"><i class="fas fa-moon"></i>下班提醒時間</label>
                     <input type="time" id="eveningTime" class="form-control time-input" value="18:00">
-                    <small class="text-muted">設置您希望在多晚沒打卡時收到下班提醒</small>
                 </div>
-                
-                <div class="form-group mb-3">
-                    <label class="custom-switch">
-                        <input type="checkbox" id="weekendEnabled">
-                        <span class="slider"></span>
-                    </label>
-                    <span class="switch-label">週末也提醒</span>
+                <small class="form-text text-muted mb-3 d-block text-right">系統會在此時間後檢查是否已下班打卡</small>
+
+                <div class="form-group">
+                    <label for="weekendEnabled"><i class="fas fa-calendar-week"></i>週末也提醒</label>
+                     <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="weekendEnabled">
+                        <label class="custom-control-label" for="weekendEnabled"></label>
+                    </div>
                 </div>
-                
-                <div class="form-group mb-3">
-                    <label class="custom-switch">
-                        <input type="checkbox" id="holidayEnabled">
-                        <span class="slider"></span>
-                    </label>
-                    <span class="switch-label">節假日也提醒</span>
+
+                <div class="form-group">
+                    <label for="holidayEnabled"><i class="fas fa-calendar-check"></i>節假日也提醒</label>
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="holidayEnabled">
+                        <label class="custom-control-label" for="holidayEnabled"></label>
+                    </div>
                 </div>
-                
-                <button type="button" id="saveBtn" class="btn btn-primary">保存設置</button>
-                <button type="button" id="testMorningBtn" class="btn btn-outline-info mr-2">測試上班提醒</button>
-                <button type="button" id="testEveningBtn" class="btn btn-outline-info">測試下班提醒</button>
+
+                <button type="button" id="saveBtn" class="btn btn-primary mt-4 w-100">
+                    <i class="fas fa-save mr-1"></i> 保存設置
+                </button>
+
+                 <div class="test-buttons text-center mt-3">
+                     <p class="text-muted small mb-2">測試提醒將發送到您的 LINE</p>
+                    <button type="button" id="testMorningBtn" class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-paper-plane mr-1"></i> 測試上班提醒
+                    </button>
+                    <button type="button" id="testEveningBtn" class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-paper-plane mr-1"></i> 測試下班提醒
+                    </button>
+                </div>
+
             </form>
         </div>
     </div>
-    
-    <div class="alert alert-info">
-        <h5>關於打卡提醒</h5>
-        <p>系統會定期檢查您是否已經打卡，如果在設定的時間還未打卡，會通過LINE發送提醒通知。</p>
-        <p>您可以隨時在此頁面修改提醒設置或關閉提醒功能。</p>
+
+    <div class="alert alert-info mt-4" role="alert">
+        <h5 class="alert-heading"><i class="fas fa-info-circle mr-2"></i>關於打卡提醒</h5>
+        <p class="small mb-0">系統會定期檢查您是否已經打卡，如果在設定的時間還未打卡，會通過LINE發送提醒通知。您可以隨時在此頁面修改提醒設置或關閉提醒功能。</p>
     </div>
-    
+
     <div class="text-center mt-4">
-        <a href="javascript:history.back()" class="btn btn-secondary">返回</a>
+         <a href="javascript:liff.closeWindow();" class="btn btn-secondary">
+             <i class="fas fa-times mr-1"></i> 關閉
+         </a>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     let userId = "";
     let displayName = "";
-    
-    // 初始化LIFF
-    async function initializeLiff() {
-        try {
-            await liff.init({ liffId: "{{ liff_id }}" });
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
-            }
-            
-            const profile = await liff.getProfile();
-            userId = profile.userId;
-            displayName = profile.displayName;
-            
-            document.getElementById("userId").value = userId;
-            
-            // 加載提醒設置
-            loadReminderSettings();
-        } catch (error) {
-            console.error("LIFF初始化失敗:", error);
-            showAlert("error", "無法初始化LIFF，請確保您在LINE應用中開啟此頁面");
-        }
-    }
-    
-    // 加載提醒設置
-    async function loadReminderSettings() {
-        try {
-            const response = await fetch(`/api/reminder/settings?userId=${userId}`);
-            const data = await response.json();
-            
-            if (data.success && data.settings) {
-                const settings = data.settings;
-                
-                document.getElementById("enabled").checked = settings.enabled === 1;
-                document.getElementById("morningTime").value = settings.morning_time;
-                document.getElementById("eveningTime").value = settings.evening_time;
-                document.getElementById("weekendEnabled").checked = settings.weekend_enabled === 1;
-                document.getElementById("holidayEnabled").checked = settings.holiday_enabled === 1;
-            }
-        } catch (error) {
-            console.error("獲取提醒設置失敗:", error);
-            showAlert("error", "獲取設置失敗，請重試");
-        }
-    }
-    
-    // 保存提醒設置
-    async function saveReminderSettings() {
-        try {
-            const settings = {
-                userId: userId,
-                enabled: document.getElementById("enabled").checked ? 1 : 0,
-                morning_time: document.getElementById("morningTime").value,
-                evening_time: document.getElementById("eveningTime").value,
-                weekend_enabled: document.getElementById("weekendEnabled").checked ? 1 : 0,
-                holiday_enabled: document.getElementById("holidayEnabled").checked ? 1 : 0
-            };
-            
-            const response = await fetch("/api/reminder/settings", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(settings)
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showAlert("success", "設置已保存");
-            } else {
-                showAlert("error", data.message || "保存失敗");
-            }
-        } catch (error) {
-            console.error("保存提醒設置失敗:", error);
-            showAlert("error", "保存設置失敗，請重試");
-        }
-    }
-    
-    // 測試提醒
-    async function testReminder(type) {
-        try {
-            const response = await fetch("/api/reminder/test", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    userId: userId,
-                    name: displayName,
-                    type: type
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showAlert("success", "測試提醒已發送，請查看LINE通知");
-            } else {
-                showAlert("error", data.message || "發送測試提醒失敗");
-            }
-        } catch (error) {
-            console.error("測試提醒失敗:", error);
-            showAlert("error", "發送測試提醒失敗，請重試");
-        }
-    }
-    
-    // 顯示提示訊息 (相容於 Bootstrap 4)
+
+    // --- ( showAlert function - Use Bootstrap 4 style ) ---
     function showAlert(type, message) {
         const alertContainer = document.getElementById("alert-container");
-        
-        // 創建警告框
         const alertDiv = document.createElement("div");
         alertDiv.className = `alert alert-${type === "success" ? "success" : "danger"} alert-dismissible fade show`;
+        alertDiv.setAttribute("role", "alert");
         alertDiv.innerHTML = `
             ${message}
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
             </button>
         `;
-        
-        // 添加到容器
+        alertContainer.innerHTML = ''; // Clear previous alerts
         alertContainer.appendChild(alertDiv);
-        
-        // 3秒後自動消失
+
+        // Auto dismiss after 3 seconds
         setTimeout(() => {
             $(alertDiv).alert('close');
         }, 3000);
     }
-    
-    // 事件綁定
-    document.addEventListener("DOMContentLoaded", function() {
+
+    // --- ( initializeLiff, loadReminderSettings, saveReminderSettings, testReminder - 基本邏輯不變 ) ---
+    async function initializeLiff() {
+        try {
+            await liff.init({ liffId: "{{ liff_id }}" }); // Make sure LIFF ID is passed correctly
+            if (!liff.isLoggedIn()) {
+                liff.login({ redirectUri: window.location.href });
+                return;
+            }
+            const profile = await liff.getProfile();
+            userId = profile.userId;
+            displayName = profile.displayName;
+            document.getElementById("userId").value = userId;
+            loadReminderSettings();
+        } catch (error) {
+            console.error("LIFF initialization failed:", error);
+            showAlert("danger", "無法初始化應用程式，請在 LINE 中重試。");
+        }
+    }
+
+     async function loadReminderSettings() {
+        if (!userId) return;
+        try {
+            const response = await fetch(`/api/reminder/settings?userId=${userId}`);
+            const data = await response.json();
+            if (data.success && data.settings) {
+                const settings = data.settings;
+                document.getElementById("enabled").checked = settings.checkin_reminder; // Use correct key from model
+                document.getElementById("morningTime").value = settings.checkin_time; // Use correct key
+                document.getElementById("eveningTime").value = settings.checkout_time; // Use correct key
+                // Assuming backend uses 0/1 for boolean in DB
+                document.getElementById("weekendEnabled").checked = !!settings.weekend_enabled;
+                document.getElementById("holidayEnabled").checked = !!settings.holiday_enabled;
+            } else {
+                showAlert("warning", "無法載入現有設定，將顯示預設值。");
+            }
+        } catch (error) {
+            console.error("Failed to load reminder settings:", error);
+            showAlert("danger", "載入設定失敗，請稍後重試。");
+        }
+    }
+
+     async function saveReminderSettings() {
+        if (!userId) return;
+        const saveBtn = document.getElementById("saveBtn");
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> 保存中...';
+
+        try {
+            // Ensure keys match the expected API keys (adjust if backend expects different keys)
+            const settings = {
+                userId: userId,
+                checkin_reminder: document.getElementById("enabled").checked, // Match the model key
+                checkin_time: document.getElementById("morningTime").value,     // Match the model key
+                checkout_reminder: document.getElementById("enabled").checked, // Assuming one switch controls both for now, adjust if separate
+                checkout_time: document.getElementById("eveningTime").value,    // Match the model key
+                weekend_enabled: document.getElementById("weekendEnabled").checked,
+                holiday_enabled: document.getElementById("holidayEnabled").checked
+            };
+
+            const response = await fetch("/api/reminder/settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(settings)
+            });
+            const data = await response.json();
+            if (data.success) {
+                showAlert("success", "提醒設置已成功保存！");
+            } else {
+                showAlert("danger", data.message || "保存失敗，請檢查輸入或稍後重試。");
+            }
+        } catch (error) {
+            console.error("Failed to save reminder settings:", error);
+            showAlert("danger", "保存設定時發生錯誤，請檢查網路連線。");
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> 保存設置';
+        }
+    }
+
+     async function testReminder(type) {
+        if (!userId) return;
+        const testBtn = type === '上班' ? document.getElementById("testMorningBtn") : document.getElementById("testEveningBtn");
+        const originalText = testBtn.innerHTML;
+        testBtn.disabled = true;
+        testBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> 測試中';
+
+        try {
+            const response = await fetch("/api/reminder/test", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: userId, name: displayName, type: type })
+            });
+            const data = await response.json();
+            if (data.success) {
+                showAlert("success", `測試${type}提醒已發送，請查看您的 LINE 通知。`);
+            } else {
+                showAlert("danger", data.message || `發送測試${type}提醒失敗。`);
+            }
+        } catch (error) {
+            console.error(`Failed to test ${type} reminder:`, error);
+            showAlert("danger", `發送測試${type}提醒時發生錯誤。`);
+        } finally {
+             testBtn.disabled = false;
+             testBtn.innerHTML = originalText;
+        }
+    }
+
+    // --- (DOMContentLoaded listener 不變) ---
+     document.addEventListener("DOMContentLoaded", function() {
         initializeLiff();
-        
         document.getElementById("saveBtn").addEventListener("click", saveReminderSettings);
         document.getElementById("testMorningBtn").addEventListener("click", () => testReminder("上班"));
         document.getElementById("testEveningBtn").addEventListener("click", () => testReminder("下班"));
     });
+
 </script>
 {% endblock %}
