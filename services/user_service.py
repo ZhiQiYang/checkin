@@ -41,7 +41,7 @@ class UserService:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
-            cursor.execute("SELECT * FROM users WHERE line_user_id = ?", (user_id,))
+            cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
             user = cursor.fetchone()
             
             if user:
@@ -51,17 +51,16 @@ class UserService:
             profile = UserService.get_line_profile(user_id)
             if profile:
                 display_name = profile.get('displayName', '')
-                picture_url = profile.get('pictureUrl', '')
                 
                 # 創建新用戶
                 cursor.execute(
-                    "INSERT INTO users (line_user_id, name, profile_image_url) VALUES (?, ?, ?)",
-                    (user_id, display_name, picture_url)
+                    "INSERT INTO users (user_id, name, display_name) VALUES (?, ?, ?)",
+                    (user_id, display_name, display_name)
                 )
                 conn.commit()
                 
                 # 重新獲取用戶信息
-                cursor.execute("SELECT * FROM users WHERE line_user_id = ?", (user_id,))
+                cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
                 user = cursor.fetchone()
                 if user:
                     return dict(user)
@@ -84,7 +83,7 @@ class UserService:
             cursor = conn.cursor()
             
             # 檢查用戶是否存在
-            cursor.execute("SELECT id FROM users WHERE line_user_id = ?", (user_id,))
+            cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
             user = cursor.fetchone()
             
             if not user:
@@ -92,36 +91,34 @@ class UserService:
                 profile = UserService.get_line_profile(user_id)
                 if profile:
                     display_name = profile.get('displayName', '')
-                    picture_url = profile.get('pictureUrl', '')
                     
                     cursor.execute(
-                        "INSERT INTO users (line_user_id, name, profile_image_url) VALUES (?, ?, ?)",
-                        (user_id, display_name, picture_url)
+                        "INSERT INTO users (user_id, name, display_name) VALUES (?, ?, ?)",
+                        (user_id, display_name, display_name)
                     )
                     conn.commit()
                 else:
                     # 無法獲取用戶資料，使用默認值
                     cursor.execute(
-                        "INSERT INTO users (line_user_id, name) VALUES (?, ?)",
-                        (user_id, '未知用戶')
+                        "INSERT INTO users (user_id, name, display_name) VALUES (?, ?, ?)",
+                        (user_id, '未知用戶', '未知用戶')
                     )
                     conn.commit()
             
             # 更新用戶設置
             # 這裡假設settings是一個字典，包含要更新的欄位和值
-            # 例如：{'email': 'example@mail.com', 'department': 'IT'}
             update_fields = []
             update_values = []
             
             for key, value in settings.items():
-                if key != 'id' and key != 'line_user_id':  # 防止更新主鍵和用戶ID
+                if key != 'user_id':  # 防止更新主鍵
                     update_fields.append(f"{key} = ?")
                     update_values.append(value)
             
             if not update_fields:
                 return False
                 
-            update_sql = f"UPDATE users SET {', '.join(update_fields)} WHERE line_user_id = ?"
+            update_sql = f"UPDATE users SET {', '.join(update_fields)} WHERE user_id = ?"
             update_values.append(user_id)
             
             cursor.execute(update_sql, update_values)
@@ -136,14 +133,14 @@ class UserService:
     
     @staticmethod
     def get_all_active_users():
-        """獲取所有活躍用戶"""
+        """獲取所有用戶"""
         try:
             conn = sqlite3.connect(Config.DB_PATH)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
-            # 獲取所有活躍用戶
-            cursor.execute("SELECT * FROM users WHERE is_active = 1")
+            # 獲取所有用戶
+            cursor.execute("SELECT * FROM users")
             users = cursor.fetchall()
             
             conn.close()
@@ -151,5 +148,5 @@ class UserService:
             return [dict(user) for user in users]
             
         except Exception as e:
-            logger.error(f"獲取活躍用戶時出錯: {str(e)}")
+            logger.error(f"獲取用戶時出錯: {str(e)}")
             return [] 
