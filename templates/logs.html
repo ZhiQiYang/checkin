@@ -1,185 +1,215 @@
-<!-- templates/logs.html -->
 {% extends "base.html" %}
 
 {% block title %}系統日誌{% endblock %}
 
 {% block extra_css %}
 <style>
-    .log-container {
-        background-color: #1e1e1e;
-        color: #dcdcdc;
-        border-radius: 5px;
-        padding: 15px;
-        font-family: Consolas, Monaco, 'Courier New', monospace;
-        height: 70vh;
-        overflow-y: auto;
-        white-space: pre-wrap;
-        font-size: 0.9em;
-        line-height: 1.5;
-    }
+    body { background-color: #e9ecef; }
+    .container { max-width: 1140px; } /* Wider for logs */
+
     .log-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
+        background-color: #fff;
+        padding: 1rem 1.5rem;
+        border-radius: 10px 10px 0 0;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border-bottom: 1px solid var(--border-color);
     }
+     .log-header h1 { font-size: 1.5rem; margin-bottom: 0; }
+     .log-header .btn { font-size: 0.9rem; }
+     .log-header .btn i { margin-right: 0.4rem; }
+
     .log-filter {
-        margin-bottom: 15px;
-        padding: 10px;
-        background-color: #f5f5f5;
-        border-radius: 5px;
+        background-color: #fff;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.07);
     }
     .filter-input {
-        width: 100%;
-        padding: 5px;
-        border: 1px solid #ccc;
-        border-radius: 3px;
+        border-radius: 6px;
     }
-    .log-info {
-        color: #75bfff;
+    .filter-controls label { font-size: 0.9rem; margin-right: 1rem; }
+    .filter-controls .form-check-input { margin-top: 0.2rem; }
+
+    .log-container-card {
+         border-radius: 10px;
+         overflow: hidden; /* Ensure inner container respects radius */
+         box-shadow: 0 3px 10px rgba(0,0,0,0.07);
     }
-    .log-warning {
-        color: #ffcc66;
+    .log-container {
+        background-color: #282c34; /* Dark background */
+        color: #abb2bf; /* Light gray text */
+        border-radius: 0 0 10px 10px; /* Match card bottom */
+        padding: 1.5rem;
+        font-family: 'Fira Code', Consolas, Monaco, 'Courier New', monospace; /* Monospace font */
+        height: 75vh; /* Increased height */
+        overflow-y: auto;
+        white-space: pre-wrap; /* Wrap long lines */
+        font-size: 0.85em;
+        line-height: 1.6;
     }
-    .log-error {
-        color: #ff6b6b;
-    }
-    .timestamp {
-        color: #999;
-    }
-    .nav-buttons {
-        margin-top: 15px;
-    }
+    .log-container::-webkit-scrollbar { width: 8px; }
+    .log-container::-webkit-scrollbar-track { background: #3a3f4a; }
+    .log-container::-webkit-scrollbar-thumb { background-color: #5c6370; border-radius: 4px; }
+
+    .log-line { margin-bottom: 0.1em; } /* Spacing between lines */
+    .timestamp { color: #61afef; } /* Blue for timestamp */
+    .log-level { font-weight: bold; margin: 0 0.5em; }
+    .log-info .log-level { color: #98c379; } /* Green for INFO */
+    .log-warning .log-level { color: #e5c07b; } /* Yellow for WARNING */
+    .log-error .log-level { color: #e06c75; } /* Red for ERROR */
+    .log-path { color: #56b6c2; font-style: italic; } /* Teal for path */
+
+    .log-meta { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container py-4">
-    <div class="log-header">
-        <h1 class="mb-0">📋 系統日誌</h1>
+
+    <div class="log-header d-flex justify-content-between align-items-center mb-3">
+        <h1><i class="fas fa-scroll text-primary mr-2"></i>系統日誌</h1>
         <div>
-            <button id="refresh-btn" class="btn btn-primary">刷新</button>
-            <button id="download-btn" class="btn btn-secondary ml-2">下載日誌</button>
+            <button id="refresh-btn" class="btn btn-sm btn-primary"><i class="fas fa-sync-alt"></i> 刷新</button>
+            <button id="download-btn" class="btn btn-sm btn-secondary ml-2"><i class="fas fa-download"></i> 下載</button>
+            <a href="/admin?userId={{ user_id }}" class="btn btn-sm btn-outline-secondary ml-2"><i class="fas fa-arrow-left"></i> 返回管理面板</a>
         </div>
     </div>
-    
+
     <div class="log-filter">
-        <input type="text" id="log-search" class="filter-input" placeholder="輸入關鍵字過濾日誌...">
-        <div class="mt-2">
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" id="show-info" checked>
-                <label class="form-check-label" for="show-info">顯示信息</label>
+        <div class="row">
+            <div class="col-md-8 mb-2 mb-md-0">
+                 <input type="text" id="log-search" class="form-control form-control-sm filter-input" placeholder="輸入關鍵字過濾日誌...">
             </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" id="show-warnings" checked>
-                <label class="form-check-label" for="show-warnings">顯示警告</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" id="show-errors" checked>
-                <label class="form-check-label" for="show-errors">顯示錯誤</label>
+            <div class="col-md-4 d-flex align-items-center justify-content-end filter-controls">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="show-info" checked>
+                    <label class="form-check-label" for="show-info">信息</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="show-warnings" checked>
+                    <label class="form-check-label" for="show-warnings">警告</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="show-errors" checked>
+                    <label class="form-check-label" for="show-errors">錯誤</label>
+                </div>
             </div>
         </div>
     </div>
-    
-    <div class="card">
-        <div class="card-body p-0">
-            <div id="log-content" class="log-container">{{ log_content }}</div>
+
+    <div class="card log-container-card">
+        <div id="log-content" class="log-container">
+             <div class="text-center p-5"> <i class="fas fa-spinner fa-spin mr-2"></i> 載入日誌中... </div>
         </div>
     </div>
-    
-    <div class="text-muted mt-2">
+
+    <div class="log-meta text-center mt-2">
         日誌文件: {{ log_file }} | 生成時間: {{ generated_time }}
     </div>
-    
-    <div class="nav-buttons">
-        <a href="/admin?userId={{ user_id }}" class="btn btn-secondary">返回管理面板</a>
-    </div>
+
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
 <script>
-    // 日誌過濾功能
-    document.getElementById('log-search').addEventListener('input', filterLogs);
-    document.getElementById('show-info').addEventListener('change', filterLogs);
-    document.getElementById('show-warnings').addEventListener('change', filterLogs);
-    document.getElementById('show-errors').addEventListener('change', filterLogs);
-    
-    function filterLogs() {
+    // --- ( filterLogs function - Enhanced with classes ) ---
+     function filterLogs() {
+        const rawLogContent = document.getElementById('log-content').dataset.rawLog || ''; // Get raw content
         const searchText = document.getElementById('log-search').value.toLowerCase();
         const showInfo = document.getElementById('show-info').checked;
         const showWarnings = document.getElementById('show-warnings').checked;
         const showErrors = document.getElementById('show-errors').checked;
-        
-        const logContent = document.getElementById('log-content');
-        const logLines = logContent.innerText.split('\n');
-        let filteredContent = '';
-        
+
+        const logContainer = document.getElementById('log-content');
+        const logLines = rawLogContent.split('\n');
+        let filteredHtml = '';
+
         for (const line of logLines) {
+            if (!line.trim()) continue; // Skip empty lines
+
             const lowerLine = line.toLowerCase();
-            
-            // 檢查日誌類型
-            const isInfo = lowerLine.includes(' info:') && !lowerLine.includes(' warning:') && !lowerLine.includes(' error:');
-            const isWarning = lowerLine.includes(' warning:');
-            const isError = lowerLine.includes(' error:');
-            
-            // 根據過濾器設置決定是否顯示
-            const showByType = (isInfo && showInfo) || 
-                              (isWarning && showWarnings) || 
-                              (isError && showErrors) ||
-                              (!isInfo && !isWarning && !isError); // 其他類型默認顯示
-            
-            // 根據搜索文本過濾
+            let logLevelClass = '';
+            let levelText = '';
+
+            // Determine log level for filtering and styling
+            if (lowerLine.includes(' info:')) {
+                logLevelClass = 'log-info';
+                levelText = 'INFO';
+            } else if (lowerLine.includes(' warning:')) {
+                logLevelClass = 'log-warning';
+                 levelText = 'WARNING';
+            } else if (lowerLine.includes(' error:')) {
+                logLevelClass = 'log-error';
+                 levelText = 'ERROR';
+            }
+
+            // Filter by log level checkbox
+            const showByType =
+                (logLevelClass === 'log-info' && showInfo) ||
+                (logLevelClass === 'log-warning' && showWarnings) ||
+                (logLevelClass === 'log-error' && showErrors) ||
+                 logLevelClass === ''; // Show lines without a level
+
+            // Filter by search text
             const matchesSearch = !searchText || lowerLine.includes(searchText);
-            
+
             if (showByType && matchesSearch) {
-                // 添加顏色樣式
-                let styledLine = line;
-                if (isInfo) {
-                    styledLine = `<span class="log-info">${line}</span>`;
-                } else if (isWarning) {
-                    styledLine = `<span class="log-warning">${line}</span>`;
-                } else if (isError) {
-                    styledLine = `<span class="log-error">${line}</span>`;
+                // Apply syntax highlighting (simple version)
+                let styledLine = line
+                    .replace(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})/, '<span class="timestamp">$1</span>') // Timestamp
+                    .replace(/(INFO:|WARNING:|ERROR:)/, `<span class="log-level">$1</span>`) // Log Level Text
+                    .replace(/(\[in [^\]]+\])/, '<span class="log-path">$1</span>'); // File path
+
+                // Highlight search term
+                if (searchText) {
+                     const regex = new RegExp(`(${searchText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+                     styledLine = styledLine.replace(regex, '<mark>$1</mark>');
                 }
-                
-                // 為時間戳添加樣式
-                styledLine = styledLine.replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g, 
-                                           '<span class="timestamp">$&</span>');
-                
-                filteredContent += styledLine + '\n';
+
+
+                filteredHtml += `<div class="log-line ${logLevelClass}">${styledLine}</div>`;
             }
         }
-        
-        logContent.innerHTML = filteredContent;
+        logContainer.innerHTML = filteredHtml || '<div class="text-center p-5 text-muted">無符合條件的日誌紀錄</div>';
     }
-    
-    // 頁面加載時處理日誌樣式
-    document.addEventListener('DOMContentLoaded', function() {
-        filterLogs();
-    });
-    
-    // 刷新按鈕
-    document.getElementById('refresh-btn').addEventListener('click', function() {
-        window.location.reload();
-    });
-    
-    // 下載日誌按鈕
-    document.getElementById('download-btn').addEventListener('click', function() {
-        const logContent = document.getElementById('log-content').innerText;
-        const blob = new Blob([logContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'system_log_{{ generated_time|replace(":", "-")|replace(" ", "_") }}.txt';
-        document.body.appendChild(a);
-        a.click();
-        
-        setTimeout(function() {
+
+
+    // --- ( Initial Load & Event Listeners ) ---
+     document.addEventListener('DOMContentLoaded', function() {
+        const logContainer = document.getElementById('log-content');
+        // Store raw content before initial filter
+        logContainer.dataset.rawLog = logContainer.textContent;
+        filterLogs(); // Apply initial filter and styling
+
+        // Setup listeners
+        document.getElementById('log-search').addEventListener('input', filterLogs);
+        document.getElementById('show-info').addEventListener('change', filterLogs);
+        document.getElementById('show-warnings').addEventListener('change', filterLogs);
+        document.getElementById('show-errors').addEventListener('change', filterLogs);
+
+        document.getElementById('refresh-btn').addEventListener('click', () => window.location.reload());
+
+        document.getElementById('download-btn').addEventListener('click', () => {
+            const logContent = document.getElementById('log-content').dataset.rawLog || ''; // Download raw content
+            const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            // Use the log file name from the template if available, otherwise default
+            const logFileName = "{{ log_file | replace('logs/', '') | default('system_log.txt') }}";
+            const downloadName = `log_${logFileName}_${new Date().toISOString().slice(0,10)}.txt`;
+            a.download = downloadName;
+            document.body.appendChild(a);
+            a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        }, 0);
+        });
+
+        // Scroll to bottom initially (optional)
+        logContainer.scrollTop = logContainer.scrollHeight;
     });
 </script>
 {% endblock %}
