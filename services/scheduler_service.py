@@ -5,7 +5,7 @@ import time
 import schedule
 from datetime import datetime
 import pytz
-from db.crud import get_users_needing_reminder, log_reminder
+from models import ReminderSetting
 from services.notification_service import send_line_notification
 from config import Config
 
@@ -57,7 +57,8 @@ class ReminderScheduler:
     
     def send_reminders(self, reminder_type):
         print(f"[Scheduler] 檢查{reminder_type}提醒，當前時間: {self.get_local_time().strftime('%Y-%m-%d %H:%M:%S %Z')}")
-        users = get_users_needing_reminder(reminder_type)
+        reminder_type_field = f"{reminder_type.lower()}_reminder"
+        users = ReminderSetting.get_users_for_reminder(reminder_type_field)
         
         for user in users:
             try:
@@ -72,7 +73,7 @@ class ReminderScheduler:
                 
                 if success:
                     # 記錄提醒日誌
-                    log_reminder(user['user_id'], reminder_type)
+                    ReminderSetting.log_reminder(user['user_id'], reminder_type)
                     print(f"[Scheduler] 已向用戶 {user['user_id']} 發送{reminder_type}提醒")
             except Exception as e:
                 print(f"[Scheduler] 發送提醒給用戶 {user['user_id']} 時出錯: {str(e)}")

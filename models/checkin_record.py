@@ -27,6 +27,13 @@ class CheckinRecord(Model):
     }
     
     @classmethod
+    def has_checkin_today(cls, user_id, checkin_type, date):
+        """檢查用戶當天是否已有特定類型的打卡記錄"""
+        query = f"SELECT 1 FROM {cls.table_name} WHERE user_id = ? AND date = ? AND checkin_type = ? LIMIT 1"
+        result = Database.execute_query(query, (user_id, date, checkin_type), 'one')
+        return result is not None
+    
+    @classmethod
     def get_user_records(cls, user_id, start_date=None, end_date=None, limit=30):
         """獲取用戶的打卡記錄"""
         conditions = "user_id = ?"

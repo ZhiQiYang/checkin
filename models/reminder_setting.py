@@ -2,6 +2,7 @@
 提醒設置模型，對應數據庫中的reminder_settings表
 """
 
+from datetime import datetime
 from models.base import Model, Database
 
 class ReminderSetting(Model):
@@ -106,6 +107,31 @@ class ReminderSetting(Model):
         
         results = Database.execute_query(query, None, 'all')
         return [dict(zip(['user_id', 'name', 'line_user_id'], row)) for row in results] if results else []
+    
+    @staticmethod
+    def log_reminder(user_id, reminder_type):
+        """記錄已發送的提醒"""
+        # 確認reminder_logs表存在
+        query = """
+            CREATE TABLE IF NOT EXISTS reminder_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                reminder_type TEXT NOT NULL,
+                sent_at DATETIME,
+                status TEXT
+            )
+        """
+        Database.execute_query(query)
+        
+        # 記錄提醒
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        insert_query = "INSERT INTO reminder_logs (user_id, reminder_type, sent_at, status) VALUES (?, ?, ?, ?)"
+        try:
+            Database.execute_query(insert_query, (user_id, reminder_type, now, 'sent'))
+            return True
+        except Exception as e:
+            print(f"記錄提醒日誌時出錯: {e}")
+            return False
     
     @staticmethod
     def _row_to_dict(row):

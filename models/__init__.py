@@ -7,6 +7,7 @@ from models.user import User
 from models.checkin_record import CheckinRecord
 from models.vocabulary import Vocabulary, UserVocabulary
 from models.reminder_setting import ReminderSetting
+from models.group_message import GroupMessage
 
 __all__ = [
     'Database',
@@ -15,5 +16,6 @@ __all__ = [
     'CheckinRecord', 
     'Vocabulary',
     'UserVocabulary',
-    'ReminderSetting'
+    'ReminderSetting',
+    'GroupMessage'
 ] 

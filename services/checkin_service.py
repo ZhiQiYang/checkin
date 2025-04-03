@@ -4,12 +4,6 @@ from utils.timezone import get_current_time, get_date_string, get_time_string, g
 from utils.timezone import get_current_time, get_date_string, get_time_string, get_datetime_string
 from models import CheckinRecord, User
 
-from db.crud import (
-    insert_checkin_record, 
-    has_checkin_today, 
-    save_or_update_user
-)
-
 def process_checkin(user_id, name, location, note=None, latitude=None, longitude=None, checkin_type="上班"):
     """
     處理打卡請求的核心邏輯，包含所有業務規則檢查
@@ -31,29 +25,41 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
     """
     try:
         # 保存用戶信息
-        save_or_update_user(user_id, name)
+        User.create_or_update(user_id, {'name': name, 'display_name': name})
 
-        from utils.timezone import get_current_time, get_date_string, get_time_string, get_datetime_string
         # 取得當前日期和時間
         today = get_date_string()
         time_str = get_time_string()
         timestamp = get_datetime_string()
         
         # 檢查是否已有相同類型的打卡記錄
-        if has_checkin_today(user_id, checkin_type, today):
+        if CheckinRecord.has_checkin_today(user_id, checkin_type, today):
             return False, f"今天已經{checkin_type}打卡過了", timestamp
         
         # 如果是下班打卡，檢查今天是否已經有上班打卡
-        if checkin_type == "下班" and not has_checkin_today(user_id, "上班", today):
+        if checkin_type == "下班" and not CheckinRecord.has_checkin_today(user_id, "上班", today):
             return False, "請先完成上班打卡，才能進行下班打卡", timestamp
             
-        # 插入打卡記錄
-        success = insert_checkin_record(
-            user_id, name, location, note, 
-            latitude, longitude, today, time_str, checkin_type
-        )
+        # 確保數據表存在
+        CheckinRecord.create_table_if_not_exists()
         
-        if success:
+        # 準備打卡數據
+        checkin_data = {
+            'user_id': user_id,
+            'name': name,
+            'location': location,
+            'note': note,
+            'latitude': latitude,
+            'longitude': longitude,
+            'date': today,
+            'time': time_str,
+            'checkin_type': checkin_type
+        }
+        
+        # 插入打卡記錄
+        record = CheckinRecord.create_or_update(checkin_data)
+        
+        if record:
             print(f"打卡成功: 用戶={name}, 類型={checkin_type}, 時間={timestamp}")
             return True, f"{checkin_type}打卡成功", timestamp
         else:
@@ -61,7 +67,7 @@ def process_checkin(user_id, name, location, note=None, latitude=None, longitude
             
     except Exception as e:
         print(f"打卡過程錯誤: {str(e)}")
-        return False, f"處理過程出錯: {str(e)}", utils.timezone.get_current_time().strftime("%Y-%m-%d %H:%M:%S")
+        return False, f"處理過程出錯: {str(e)}", get_datetime_string()
 
 def quick_checkin(user_id, name, checkin_type="上班", location=None, note=None, latitude=None, longitude=None):
     """
