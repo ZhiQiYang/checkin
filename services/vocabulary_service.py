@@ -190,3 +190,40 @@ def format_daily_words(words):
         print(f"格式化單詞列表失敗: {e}")
         # 如果格式化整個列表失敗，返回基本訊息
         return "📚 今日單字學習\n系統暫時無法正確顯示單字，但您今日的學習已記錄"
+
+def add_vocabulary(english, chinese, difficulty=2):
+    """
+    添加新詞彙到詞彙表 (使用模型方法)
+
+    Args:
+        english: 英文單詞
+        chinese: 中文翻譯
+        difficulty: 難度等級(1-5)
+
+    Returns:
+        新增的詞彙ID，如果失敗則返回 None
+    """
+    try:
+        # 確保數據表存在
+        Vocabulary.create_table_if_not_exists()
+
+        # 添加詞彙 (調用模型的方法)
+        word = Vocabulary.add_word(english, chinese, difficulty)
+        if word and 'id' in word:
+            print(f"✅ 成功添加詞彙: {english} (ID: {word['id']})")
+            return word['id']
+        else:
+             # 如果 add_word 失敗或返回格式不對
+             print(f"❌ 添加詞彙 '{english}' 後無法獲取 ID，可能已存在或返回格式錯誤")
+             # 嘗試再次查詢以獲取 ID (如果詞彙已存在)
+             existing_word = Vocabulary.get_by_word(english)
+             if existing_word and 'id' in existing_word:
+                 return existing_word['id']
+             return None
+
+    except Exception as e:
+        # 使用 logging 記錄錯誤會更好
+        print(f"❌ 添加詞彙 '{english}' 時出錯: {e}")
+        import traceback
+        print(traceback.format_exc()) # 打印詳細錯誤
+        return None
