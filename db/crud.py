@@ -199,18 +199,12 @@ def insert_checkin_record(user_id, name, location, note, latitude, longitude, da
             print(f"插入打卡記錄時出錯: {str(e)}")
             return False
 
-def has_checkin_today(user_id, checkin_type, date=None):
+@classmethod
+def has_checkin_today(cls, user_id, checkin_type, date):
     """檢查用戶當天是否已有特定類型的打卡記錄"""
-    if date is None:
-        date = datetime.now().strftime('%Y-%m-%d')
-        
-    with get_db_connection() as conn:
-        c = conn.cursor()
-        c.execute(
-            'SELECT * FROM checkin_records WHERE user_id = ? AND date = ? AND checkin_type = ?', 
-            (user_id, date, checkin_type)
-        )
-        return c.fetchone() is not None
+    query = f"SELECT 1 FROM {cls.table_name} WHERE user_id = ? AND date = ? AND checkin_type = ? LIMIT 1"
+    result = Database.execute_query(query, (user_id, date, checkin_type), 'one')
+    return result is not None
 
 def save_checkin(user_id, name, location, note=None, latitude=None, longitude=None, checkin_type="上班"):
     """保存打卡記錄到數據庫，確保打卡順序正確"""
