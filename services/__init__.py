@@ -16,6 +16,9 @@ from services.checkin_service import (
     get_checkin_statistics
 )
 
+# 添加事件服務
+from services.event_service import EventService
+
 __all__ = [
     'get_daily_words',
     'format_daily_words',
@@ -23,5 +26,6 @@ __all__ = [
     'record_checkin',
     'get_user_records',
     'get_today_records',
-    'get_checkin_statistics'
+    'get_checkin_statistics',
+    'EventService'
 ]

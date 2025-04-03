@@ -15,8 +15,7 @@ from utils.timezone import get_datetime_string, get_current_time, get_date_strin
 from db.crud import get_reminder_setting, update_reminder_setting
 import sqlite3
 import logging
-from services.event_service import EventService
-from services import get_daily_words, format_daily_words
+from services import EventService, get_daily_words, format_daily_words
 
 # 設置日誌
 logger = logging.getLogger(__name__)

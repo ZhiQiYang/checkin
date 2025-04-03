@@ -61,14 +61,27 @@ def update_database():
                         raise alter_err # 拋出以便上層知道
             
             # 添加 created_at 和 updated_at (如果不存在)
+            # SQLite在ALTER TABLE時不支持CURRENT_TIMESTAMP等非常量默認值
+            # 改為使用NULL默認值，再用單獨的UPDATE語句更新現有記錄
             if 'created_at' not in columns:
-                 print("添加 created_at 列到 checkin_records 表...")
-                 cursor.execute("ALTER TABLE checkin_records ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
-                 print("✅ 已添加 created_at 列")
+                print("添加 created_at 列到 checkin_records 表...")
+                try:
+                    cursor.execute("ALTER TABLE checkin_records ADD COLUMN created_at DATETIME DEFAULT NULL")
+                    # 更新現有記錄的created_at為當前時間
+                    cursor.execute("UPDATE checkin_records SET created_at = DATETIME('now') WHERE created_at IS NULL")
+                    print("✅ 已添加並更新 created_at 列")
+                except sqlite3.OperationalError as alter_err:
+                    print(f"⚠️ 添加 created_at 列時出錯: {alter_err}")
+            
             if 'updated_at' not in columns:
-                 print("添加 updated_at 列到 checkin_records 表...")
-                 cursor.execute("ALTER TABLE checkin_records ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP")
-                 print("✅ 已添加 updated_at 列")
+                print("添加 updated_at 列到 checkin_records 表...")
+                try:
+                    cursor.execute("ALTER TABLE checkin_records ADD COLUMN updated_at DATETIME DEFAULT NULL")
+                    # 更新現有記錄的updated_at為當前時間
+                    cursor.execute("UPDATE checkin_records SET updated_at = DATETIME('now') WHERE updated_at IS NULL")
+                    print("✅ 已添加並更新 updated_at 列")
+                except sqlite3.OperationalError as alter_err:
+                    print(f"⚠️ 添加 updated_at 列時出錯: {alter_err}")
         
         # --- 移除所有 CREATE TABLE 語句 ---
         # if 'users' not in existing_tables: ... (刪除)
