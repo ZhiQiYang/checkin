@@ -199,11 +199,71 @@ class CommandService:
     def handle_quick_checkin(event, reply_token, checkin_type=None):
         """處理快速打卡命令"""
         try:
-            result = quick_checkin(event, checkin_type)
-            send_reply(reply_token, result)
+            # 獲取用戶ID
+            user_id = event['source'].get('userId')
+            if not user_id:
+                send_reply(reply_token, "❌ 無法獲取用戶ID，請稍後再試")
+                return 'OK'
+            
+            # 獲取用戶名稱 (可能從Line API獲取或從資料庫獲取)
+            user_name = None
+            try:
+                # 嘗試從用戶服務獲取名稱
+                user_info = UserService.get_user_info(user_id)
+                if user_info and user_info.get('name'):
+                    user_name = user_info.get('name')
+                # 如果找不到名稱，再嘗試從Line獲取
+                if not user_name and 'profile' in event.get('source', {}):
+                    user_name = event['source']['profile'].get('displayName')
+            except Exception as e:
+                logger.warning(f"獲取用戶名稱失敗: {str(e)}")
+            
+            # 如果還是找不到名稱，使用默認名稱
+            if not user_name:
+                user_name = f"用戶_{user_id[-4:]}"
+            
+            logger.info(f"處理打卡命令: 用戶={user_name}, ID={user_id}, 類型={checkin_type or '上班'}")
+            
+            # 如果未指定類型，默認為上班
+            if not checkin_type:
+                checkin_type = "上班"
+            
+            # 執行打卡操作
+            success, message, timestamp = quick_checkin(
+                user_id=user_id,
+                name=user_name,
+                checkin_type=checkin_type
+            )
+            
+            # 準備回覆消息
+            if success:
+                # 如果是上班打卡成功，添加今日單字學習
+                if checkin_type == "上班":
+                    try:
+                        today_date = get_date_string()
+                        daily_words = get_daily_words(today_date, user_id)
+                        vocab_message = format_daily_words(daily_words)
+                        # 組合完整消息
+                        full_message = f"{message}\n\n{vocab_message}"
+                        send_reply(reply_token, full_message)
+                    except Exception as e:
+                        logger.error(f"添加單字學習時出錯: {str(e)}")
+                        send_reply(reply_token, message)
+                else:
+                    # 下班打卡只返回打卡結果
+                    send_reply(reply_token, message)
+            else:
+                # 打卡失敗
+                send_reply(reply_token, message)
+            
+            # 打印日誌
+            logger.info(f"打卡結果: {success}, 消息: {message}")
+            
         except Exception as e:
             logger.error(f"快速打卡出錯: {str(e)}")
-            send_reply(reply_token, f"❌ 打卡失敗，請稍後再試。錯誤: {str(e)}")
+            logger.debug(traceback.format_exc())
+            send_reply(reply_token, f"❌ 打卡失敗，請稍後再試。\n錯誤: {str(e)[:100]}")
+        
         return 'OK'
     
     @staticmethod
