@@ -1,75 +1,59 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>匯出打卡記錄</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            padding: 20px;
-            background-color: #f7f7f7;
-            font-family: Arial, sans-serif;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .export-form {
-            margin-top: 20px;
-        }
-        .form-footer {
-            margin-top: 30px;
-            text-align: center;
-        }
-        .export-btn {
-            margin-bottom: 10px;
-        }
-        .export-options {
-            margin-top: 20px;
-        }
-        .btn-excel {
-            background-color: #217346;
-            color: white;
-        }
-        .btn-pdf {
-            background-color: #F40F02;
-            color: white;
-        }
-        .btn-sheets {
-            background-color: #0F9D58;
-            color: white;
-        }
-        .export-card {
-            margin-bottom: 15px;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .card-header {
-            font-weight: bold;
-        }
-        .feature-unavailable {
-            color: #856404;
-            background-color: #fff3cd;
-            border-color: #ffeeba;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1 class="text-center mb-4">匯出打卡記錄</h1>
-        
-        <div class="export-form">
+{% extends "base.html" %}
+
+{% block title %}匯出打卡記錄{% endblock %}
+
+{% block extra_css %}
+<style>
+    .export-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: 1px solid var(--border-color);
+    }
+    .export-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+    }
+    .card-header {
+        font-size: 1.1rem;
+        font-weight: 600;
+        background-color: var(--light-gray);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .export-btn i {
+        margin-right: 0.5rem;
+    }
+    .feature-unavailable {
+        font-size: 0.9rem;
+        padding: 0.75rem 1rem;
+        background-color: #fff3cd; /* Bootstrap warning background */
+        color: #856404; /* Bootstrap warning text */
+        border: 1px solid #ffeeba; /* Bootstrap warning border */
+        border-radius: 6px;
+    }
+    .feature-unavailable i {
+        margin-right: 0.5rem;
+    }
+    .btn-excel { background-color: #1D6F42; color: white; border-color: #1D6F42; }
+    .btn-excel:hover { background-color: #165934; border-color: #165934; }
+    .btn-pdf { background-color: #D93025; color: white; border-color: #D93025; }
+    .btn-pdf:hover { background-color: #B0261D; border-color: #B0261D; }
+    .btn-sheets { background-color: #34A853; color: white; border-color: #34A853; }
+    .btn-sheets:hover { background-color: #2A8643; border-color: #2A8643; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <i class="fas fa-file-export fa-3x text-primary mb-2"></i>
+        <h1>匯出打卡記錄</h1>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-filter mr-2"></i>匯出選項</div>
+        <div class="card-body">
             <div class="form-group">
-                <label for="dateRange">選擇時間範圍：</label>
-                <select id="dateRange" name="dateRange" class="form-control">
+                <label for="dateRange"><i class="fas fa-calendar-alt mr-1"></i> 選擇時間範圍</label>
+                <select id="dateRange" name="dateRange" class="form-control custom-select">
                     <option value="7">最近一週</option>
                     <option value="30">最近一個月</option>
                     <option value="90">最近三個月</option>
@@ -77,91 +61,143 @@
                 </select>
                 <input type="hidden" id="userId" value="{{ user_id }}">
             </div>
-            
-            <div class="export-options">
-                <div class="card export-card">
-                    <div class="card-header bg-light">Microsoft Excel 格式</div>
-                    <div class="card-body">
-                        <p>匯出為 Excel 表格格式 (.xlsx)</p>
-                        <button onclick="exportTo('excel')" class="btn btn-excel btn-block export-btn">
-                            <i class="fas fa-file-excel"></i> 匯出 Excel
+        </div>
+    </div>
+
+    <div class="export-options">
+        <h4 class="mb-3 text-muted">選擇匯出格式：</h4>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card export-card h-100">
+                    <div class="card-header"><i class="fas fa-file-excel text-success mr-2"></i> Excel</div>
+                    <div class="card-body d-flex flex-column">
+                        <p class="card-text small flex-grow-1">匯出為標準的 Excel 表格格式 (.xlsx)，適合資料分析。</p>
+                        <button onclick="exportTo('excel')" class="btn btn-excel btn-block export-btn mt-auto">
+                            匯出 Excel
                         </button>
                     </div>
                 </div>
-                
-                <div class="card export-card">
-                    <div class="card-header bg-light">PDF 文件格式</div>
-                    <div class="card-body">
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <div class="card export-card h-100">
+                    <div class="card-header"><i class="fas fa-file-pdf text-danger mr-2"></i> PDF</div>
+                    <div class="card-body d-flex flex-column">
+                        <p class="card-text small flex-grow-1">匯出為 PDF 文件格式 (.pdf)，適合列印或正式存檔。</p>
                         {% if pdf_available %}
-                        <p>匯出為 PDF 文件格式 (.pdf)</p>
-                        <button onclick="exportTo('pdf')" class="btn btn-pdf btn-block export-btn">
-                            <i class="fas fa-file-pdf"></i> 匯出 PDF
+                        <button onclick="exportTo('pdf')" class="btn btn-pdf btn-block export-btn mt-auto">
+                            匯出 PDF
                         </button>
                         {% else %}
-                        <div class="feature-unavailable">
-                            <i class="fas fa-exclamation-triangle"></i> PDF 匯出功能暫時不可用。
+                        <div class="feature-unavailable mb-2 small">
+                            <i class="fas fa-exclamation-triangle"></i> PDF 匯出功能需要額外設定。
                         </div>
-                        <button class="btn btn-secondary btn-block export-btn" disabled>
-                            <i class="fas fa-file-pdf"></i> 匯出 PDF（不可用）
+                        <button class="btn btn-secondary btn-block export-btn mt-auto" disabled>
+                            <i class="fas fa-lock mr-1"></i> 匯出 PDF (不可用)
                         </button>
                         {% endif %}
                     </div>
                 </div>
-                
-                <div class="card export-card">
-                    <div class="card-header bg-light">Google Sheets 格式</div>
-                    <div class="card-body">
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <div class="card export-card h-100">
+                    <div class="card-header"><i class="fas fa-table text-info mr-2"></i> Google Sheets</div>
+                    <div class="card-body d-flex flex-column">
+                         <p class="card-text small flex-grow-1">直接匯出資料到新的 Google 試算表，方便線上協作。</p>
                         {% if sheets_available %}
-                        <p>匯出至 Google 試算表</p>
-                        <button onclick="exportTo('sheets')" class="btn btn-sheets btn-block export-btn">
-                            <i class="fas fa-table"></i> 匯出至 Google Sheets
+                        <button onclick="exportTo('sheets')" class="btn btn-sheets btn-block export-btn mt-auto">
+                             匯出至 Google Sheets
                         </button>
                         {% else %}
-                        <div class="feature-unavailable">
-                            <i class="fas fa-exclamation-triangle"></i> Google Sheets 匯出功能暫時不可用。
+                        <div class="feature-unavailable mb-2 small">
+                            <i class="fas fa-exclamation-triangle"></i> Google Sheets 匯出需要額外設定。
                         </div>
-                        <button class="btn btn-secondary btn-block export-btn" disabled>
-                            <i class="fas fa-table"></i> 匯出至 Google Sheets（不可用）
+                        <button class="btn btn-secondary btn-block export-btn mt-auto" disabled>
+                            <i class="fas fa-lock mr-1"></i> 匯出至 Google Sheets (不可用)
                         </button>
                         {% endif %}
                     </div>
                 </div>
             </div>
         </div>
-        
-        <div class="form-footer">
-            <a href="javascript:history.back()" class="btn btn-secondary">返回</a>
-        </div>
     </div>
-    
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-    <script>
-        function exportTo(type) {
-            const userId = document.getElementById('userId').value;
-            const dateRange = document.getElementById('dateRange').value;
-            let url = '';
-            
-            switch(type) {
-                case 'excel':
-                    url = `/export/checkin-records?userId=${userId}&dateRange=${dateRange}`;
-                    break;
-                case 'pdf':
-                    url = `/export/pdf?userId=${userId}&dateRange=${dateRange}`;
-                    break;
-                case 'sheets':
-                    // 對於 Google Sheets，我們可以直接導出或提供數據給前端處理
-                    url = `/export/google-sheets?userId=${userId}&dateRange=${dateRange}`;
-                    // 對於直接匯出，可以打開新窗口而不是直接下載
-                    window.open(url, '_blank');
-                    return; // 提前返回，不要執行下面的 window.location
-                default:
-                    alert('未知的匯出類型');
-                    return;
-            }
-            
-            // 直接導向到匯出 URL（用於下載檔案）
-            window.location.href = url;
+
+    <div class="text-center mt-4">
+        <a href="javascript:liff.closeWindow();" class="btn btn-secondary">
+            <i class="fas fa-times mr-1"></i> 關閉
+        </a>
+        </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+<script>
+    function exportTo(type) {
+        const userId = document.getElementById('userId').value;
+        const dateRange = document.getElementById('dateRange').value;
+        let url = '';
+
+        // Show loading indicator (optional)
+        const body = document.querySelector('body');
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.style.position = 'fixed';
+        loadingOverlay.style.top = '0';
+        loadingOverlay.style.left = '0';
+        loadingOverlay.style.width = '100%';
+        loadingOverlay.style.height = '100%';
+        loadingOverlay.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+        loadingOverlay.style.display = 'flex';
+        loadingOverlay.style.justifyContent = 'center';
+        loadingOverlay.style.alignItems = 'center';
+        loadingOverlay.style.zIndex = '10000';
+        loadingOverlay.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="sr-only">處理中...</span></div><p class="ml-2 mb-0">匯出處理中...</p>';
+        body.appendChild(loadingOverlay);
+
+        // Construct URL
+        switch(type) {
+            case 'excel':
+                url = `/export/checkin-records?userId=${userId}&dateRange=${dateRange}`;
+                window.location.href = url; // Trigger download
+                break;
+            case 'pdf':
+                url = `/export/pdf?userId=${userId}&dateRange=${dateRange}`;
+                window.location.href = url; // Trigger download
+                break;
+            case 'sheets':
+                url = `/export/google-sheets?userId=${userId}&dateRange=${dateRange}`;
+                // For Google Sheets, open in new tab or handle response
+                 fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        body.removeChild(loadingOverlay); // Remove loading
+                        if (data.success && data.spreadsheetUrl) {
+                            // Optionally open the new sheet, or just show a success message
+                            alert('匯出成功！已建立 Google Sheet。');
+                            window.open(data.spreadsheetUrl, '_blank');
+                        } else {
+                             alert('匯出失敗：' + (data.message || '無法建立 Google Sheet。'));
+                        }
+                    })
+                    .catch(error => {
+                         body.removeChild(loadingOverlay); // Remove loading
+                         console.error('Google Sheets export error:', error);
+                         alert('匯出過程中發生錯誤。');
+                    });
+                return; // Prevent default download behavior
+            default:
+                 body.removeChild(loadingOverlay); // Remove loading
+                 alert('未知的匯出類型');
+                 return;
         }
-    </script>
-</body>
-</html>
+
+         // Remove loading indicator after a short delay for file downloads
+         setTimeout(() => {
+            if (body.contains(loadingOverlay)) {
+                body.removeChild(loadingOverlay);
+            }
+         }, 3000); // Adjust delay as needed
+    }
+</script>
+{% endblock %}
