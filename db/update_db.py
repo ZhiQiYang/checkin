@@ -26,8 +26,7 @@ def update_database():
             conn.close()
             print(f"✅ 創建了新的空數據庫文件: {db_path}")
         except Exception as e:
-            print(f"❌ 創建空數據庫文件 {db_path}
-            失敗: {e}")
+            print(f"❌ 創建空數據庫文件 {db_path} 失敗: {e}")
         # 不再 return，讓後續的 Model 檢查來創建表
     
     try:
