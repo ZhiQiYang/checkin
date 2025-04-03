@@ -309,26 +309,18 @@ def update_reminder_setting(user_id, settings):
             print(f"更新提醒設置時出錯: {str(e)}")
             return False
 
+@staticmethod # 或者創建 ReminderLog 模型
 def log_reminder(user_id, reminder_type):
     """記錄已發送的提醒"""
-    with get_db_connection() as conn:
-        try:
-            c = conn.cursor()
-            
-            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            
-            c.execute('''
-                INSERT INTO reminder_logs
-                (user_id, reminder_type, sent_at, status)
-                VALUES (?, ?, ?, ?)
-            ''', (user_id, reminder_type, now, 'sent'))
-            
-            conn.commit()
-            return True
-        except Exception as e:
-            conn.rollback()
-            print(f"記錄提醒時出錯: {str(e)}")
-            return False
+    # 假設有一個 reminder_logs 表
+    query = "INSERT INTO reminder_logs (user_id, reminder_type, sent_at, status) VALUES (?, ?, ?, ?)"
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        Database.execute_query(query, (user_id, reminder_type, now, 'sent'))
+        return True
+    except Exception as e:
+        print(f"記錄提醒日誌時出錯: {e}")
+        return False
 
 def get_users_needing_reminder(reminder_type):
     """獲取需要發送提醒的用戶列表"""
