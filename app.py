@@ -15,8 +15,13 @@ import sys
 import logging
 from datetime import datetime
 
-# 導入新的日誌配置
-from logging_config import setup_logging
+# 嘗試導入新的日誌配置，如果找不到則使用原有的setup_logger
+try:
+    from logging_config import setup_logging
+    print("使用進階日誌系統 logging_config")
+except ImportError:
+    from utils.logger import setup_logger as setup_logging
+    print("找不到logging_config模組，使用基本日誌系統 utils.logger")
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -214,7 +219,12 @@ def create_app(config_class=Config):
 
 # 入口點
 app = create_app()
-app = setup_logger(app)
+
+# 如果需要額外設置app的logger
+try:
+    app = setup_logger(app)
+except Exception as e:
+    print(f"設置應用logger時出錯: {e}")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=app.config['PORT'], debug=app.config['DEBUG'])
